@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace Ecom.infrastructure.Repositires
 {
-    public class CategoryRepositry : GenericRepositry<Category>, ICategoryRepositry
+    public class ProductRepository : GenericRepository<Product>, IProductRepository
     {
-        public CategoryRepositry(AppDbContext context) : base(context)
+        public ProductRepository(AppDbContext context) : base(context)
         {
 
         }

@@ -8,8 +8,8 @@ namespace Ecom.Core.interfaces
 {
     public interface IUnitOfWork
     {
-        public ICategoryRepositry CategoryRepositry { get; }
+        public ICategoryRepository CategoryRepository { get; }
 
-        public IProductRepositry ProductRepositry { get; }
+        public IProductRepository ProductRepository { get; }
     }
 }

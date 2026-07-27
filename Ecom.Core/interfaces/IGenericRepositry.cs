@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Ecom.Core.interfaces
 {
-    public interface IGenericRepositry<T> where T : class
+    public interface IGenericRepository<T> where T : class
     {
 
         Task<IReadOnlyList<T>> GetAllAsync();

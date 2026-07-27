@@ -11,18 +11,18 @@ namespace Ecom.infrastructure.Repositires
     public class UnitOfWork : IUnitOfWork
     {
         private readonly AppDbContext _context;
-        public ICategoryRepositry CategoryRepositry {  get;  }
+        public ICategoryRepository CategoryRepository {  get;  }
 
-        public IProductRepositry ProductRepositry { get; }
+        public IProductRepository ProductRepository { get; }
 
 
         public UnitOfWork(AppDbContext context)
         {
            _context = context;
 
-            CategoryRepositry = new CategoryRepositry(context);
+            CategoryRepository = new CategoryRepository(context);
 
-            ProductRepositry = new ProductRepositry(context);
+            ProductRepository = new ProductRepository(context);
         }
     }
 }

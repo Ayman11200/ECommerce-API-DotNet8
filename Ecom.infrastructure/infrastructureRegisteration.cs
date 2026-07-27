@@ -17,11 +17,11 @@ namespace Ecom.infrastructure
     {
         public static object infrastructureConfiguration(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddScoped(typeof(IGenericRepositry<>),typeof(GenericRepositry<>));
+            services.AddScoped(typeof(IGenericRepository<>),typeof(GenericRepository<>));
 
-            //services.AddScoped<ICategoryRepositry, CategoryRepositry>();
+            //services.AddScoped<ICategoryRepository, CategoryRepository>();
 
-            //services.AddScoped<IProductRepositry, ProductRepositry>();
+            //services.AddScoped<IProductRepository, ProductRepository>();
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddDbContext<AppDbContext>(op =>
