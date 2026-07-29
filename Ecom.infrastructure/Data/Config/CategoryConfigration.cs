@@ -14,6 +14,7 @@ namespace Ecom.infrastructure.Data.Config
         public void Configure(EntityTypeBuilder<Category> builder)
         {
             builder.Property(x => x.Name).IsRequired().HasMaxLength(30);
+            builder.Property(x => x.Description).IsRequired(false).HasMaxLength(500);
             builder.HasData(
                 new Category { Id = 1, Name = "test", Description = "test" }
                 );

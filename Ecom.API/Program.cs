@@ -2,6 +2,7 @@ using AutoMapper;
 using Ecom.infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text;
+using Ecom.API.Extensions;
 
 namespace Ecom.API
 {
@@ -12,7 +13,7 @@ namespace Ecom.API
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-
+            builder.Services.AddMemoryCache();
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -22,12 +23,15 @@ namespace Ecom.API
 
             var app = builder.Build();
 
+            app.UseCustomExceptionMiddleware();
+
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+            app.UseStatusCodePagesWithReExecute("/errors/{0}");
 
             app.UseHttpsRedirection();
 

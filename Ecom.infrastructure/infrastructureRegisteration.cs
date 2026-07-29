@@ -10,6 +10,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Ecom.Core.Services;
+using Ecom.infrastructure.Repositires.Service;
+using Microsoft.Extensions.FileProviders;
 
 namespace Ecom.infrastructure
 {
@@ -24,6 +27,12 @@ namespace Ecom.infrastructure
             //services.AddScoped<IProductRepository, ProductRepository>();
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            services.AddSingleton<IImageManagementService, ImageManagementService>();
+
+            services.AddSingleton<IFileProvider>(
+                new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")));
+
             services.AddDbContext<AppDbContext>(op =>
             {
                 op.UseSqlServer(configuration.GetConnectionString("EcomDatabase"));

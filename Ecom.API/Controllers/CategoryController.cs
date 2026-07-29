@@ -6,7 +6,7 @@ using Ecom.Core.interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-//we should Return CategoryDTO in GetAll & GetById 
+//we should Return CategoryDTO in GetAll & GetByIdAsync 
 // Never expose your Domain Entity to the outside world 
 
 
@@ -21,99 +21,90 @@ namespace Ecom.API.Controllers
         }
 
         [HttpGet("get-all")]
+        [ProducesResponseType(typeof(IReadOnlyList<CategoryDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll()
         {
-            try
-            {
-                var categories = await work.CategoryRepository.GetAllAsync();
 
-                return Ok(categories);
+            var categories = await work.CategoryRepository.GetAllAsync();
 
+            var categoriesDto = mapper.Map<IReadOnlyList<CategoryDto>>(categories);
 
-            }
-            catch (Exception ex)
-            {
+            return Ok(categoriesDto);
 
-                return BadRequest(ex.Message);
-            }
         }
 
         [HttpGet("Get-By-Id/{Id}")]
-        public async Task<IActionResult> GetById(int Id)
+        [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetByIdAsync(int Id)
         {
-            try
-            {
-                var Category = await work.CategoryRepository.GetById(Id);
 
-                if (Category == null) return NotFound(new ResponseAPI(404, $"Not Found Category Id = {Id}"));
-                      
-                return Ok(Category);
+            var Category = await work.CategoryRepository.GetByIdAsync(Id);
 
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-             
-            }
+            if (Category is null) return NotFound(new ResponseAPI(404, $"Not Found Category Id = {Id}"));
 
+            var CategoryDto = mapper.Map<CategoryDto>(Category);
+
+            return Ok(CategoryDto);
+     
         }
 
         [HttpPost("Add-Category")]
+        [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Add(AddCategoryDto AddCategoryDto)
         {
-            try
-            {
-                var category = mapper.Map<Category>(AddCategoryDto);
 
-                await work.CategoryRepository.AddAsync(category);
+            var category = mapper.Map<Category>(AddCategoryDto);
 
-                return StatusCode(201,new ResponseAPI(201, "Category created successfully."));
+            await work.CategoryRepository.AddAsync(category);
+            await work.SaveChangesAsync();
 
+            var createdDto = mapper.Map<CategoryDto>(category);
 
-            }
-            catch (Exception ex )
-            {
-
-                return StatusCode(500, ex.Message);
-            }
-
+            return CreatedAtAction(
+                   nameof(GetByIdAsync),
+                   new { id = category.Id },
+                     createdDto);
         }
 
         [HttpPut("Update-Category")]
-        public async Task<IActionResult> Update(UpdateCategoryDto updateCategoryDto)
+        [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Update(int Id, CategoryDto CategoryDto)
         {
-            try
-            {
-                var category = mapper.Map<Category>(updateCategoryDto);
+            if(Id != CategoryDto.Id)
+                return BadRequest(new ResponseAPI(400, "Route id does not match body id."));
 
-                await work.CategoryRepository.UpdateAsync(category);
+            var category = await work.CategoryRepository.GetByIdAsync(Id);
 
-                return Ok(new ResponseAPI(200, "Category updated successfully"));
+            if (category is null)
+                return NotFound(new ResponseAPI(404, $"Category with Id = {Id} not found."));
 
-            }
-            catch (Exception ex)
-            {
+            mapper.Map(CategoryDto , category);
 
-                return StatusCode(500, ex.Message);
-            }
+            work.CategoryRepository.Update(category);
+            await work.SaveChangesAsync();
+
+            return Ok(new ResponseAPI(200, "Category updated successfully"));
+
         }
 
         [HttpDelete("Delete-Category/{Id}")]
-
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int Id)
         {
-            try
-            {
-                await work.CategoryRepository.Delete(Id);
 
-                return Ok(new ResponseAPI(200, "Category deleted successfully"));
+             var Deleted = await work.CategoryRepository.DeleteAsync(Id); ;
 
-            }
-            catch (Exception ex)
-            {
+            if (!Deleted) return NotFound(new ResponseAPI(404, $"Category with Id = {Id} not found."));
 
-                return StatusCode(500, ex.Message);
-            }
+            await work.SaveChangesAsync();
+
+            return NoContent();
+
         }
 
     }

@@ -26,20 +26,17 @@ namespace Ecom.infrastructure.Repositires
 
             await _context.Set<T>().AddAsync(entity);
 
-            await _context.SaveChangesAsync();
-
         }
 
-        public async Task Delete(int Id)
+        public async Task<bool> DeleteAsync(int Id)
         {
             var entity = await _context.Set<T>().FindAsync(Id);
-            
-            // Add Code To Check if Entity Exists
+
+            if (entity == null) return false;
 
             _context.Set<T>().Remove(entity);
+            return true;
 
-            await _context.SaveChangesAsync();
-            // You Shouldnt put SaveChanges Here while using Unit Of Work
         }
 
         public async Task<IReadOnlyList<T>> GetAllAsync()
@@ -57,32 +54,35 @@ namespace Ecom.infrastructure.Repositires
             return await query.AsNoTracking().ToListAsync();
         }
 
-        public async Task<T> GetById(int Id)
+        public async Task<T> GetByIdAsync(int Id)
         {
             var entity = await _context.Set<T>().FindAsync(Id);
             return entity;
         }
 
-        public async Task<T> GetById(int Id, params Expression<Func<T, object>>[] includes)
+        public async Task<T> GetByIdAsync(int Id, params Expression<Func<T, object>>[] includes)
         {
             IQueryable<T> query = _context.Set<T>();
 
-            foreach (var item in includes)
+            foreach (var include in includes)
             {
-               query = query.Include(item);
+               query = query.Include(include);
             }
 
-            var entity = await query.FirstOrDefaultAsync(x => EF.Property<int>(x, "Id") == Id);
+            var entity = await query.AsNoTracking().FirstOrDefaultAsync(x => EF.Property<int>(x, "Id") == Id);
 
             return entity;
         }
 
-        public async Task UpdateAsync(T entity)
-        {
-            _context.Entry(entity).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+        public void Update(T entity)
+        { 
+            var entry = _context.Entry(entity);
 
-            //Change it to Load Then Update 
+            if (entry.State == EntityState.Detached)
+                _context.Set<T>().Attach(entity);
+
+            entry.State = EntityState.Modified;
+
         }
     }
 }

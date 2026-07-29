@@ -10,7 +10,7 @@ namespace Ecom.API.Mapping
        public CategoryMapping()
         {
             CreateMap<AddCategoryDto, Category>().ReverseMap();  
-            CreateMap<UpdateCategoryDto, Category>().ReverseMap();
+            CreateMap<CategoryDto, Category>().ReverseMap();
         }
 
     }

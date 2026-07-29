@@ -3,16 +3,30 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Ecom.Core.DTO
 {
-  
 
-     public record AddCategoryDto(string Name, string Description);
+    public record AddCategoryDto
+    {
+        [Required]
+        [MaxLength(100)]
+        public string Name { get; init; } = default!;
 
-    public record UpdateCategoryDto(int Id, string Name, string Description);
+        [MaxLength(500)]
+        public string? Description { get; init; }
+    }
 
+    public record CategoryDto
+    {
+        public int Id { get; set; }
+        [Required]
+        [MaxLength(100)]
+        public string Name { get; init; } = default!;
 
+        [MaxLength(500)]
+        public string? Description { get; init; }
+    }
 
-    
 }

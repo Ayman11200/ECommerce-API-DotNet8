@@ -11,5 +11,7 @@ namespace Ecom.Core.interfaces
         public ICategoryRepository CategoryRepository { get; }
 
         public IProductRepository ProductRepository { get; }
+
+        Task<int> SaveChangesAsync();
     }
 }

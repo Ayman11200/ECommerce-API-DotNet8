@@ -6,7 +6,7 @@ namespace Ecom.API.Helper
         public int statuscode { get; set; }
         public string? Message { get; set; }
 
-        public ResponseAPI(int statuscode, string Message = null)
+        public ResponseAPI(int statuscode, string? Message = null)
         {
             this.statuscode = statuscode;
             this.Message = Message ?? GetMessageFormStatusCode(statuscode);
@@ -23,6 +23,7 @@ namespace Ecom.API.Helper
                 401 => "Un Authorized",
                 404 => "resource not found",
                 500 => "server Error",
+                _ => null,
             };
         }
 

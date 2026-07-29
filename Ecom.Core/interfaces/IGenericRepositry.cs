@@ -14,13 +14,13 @@ namespace Ecom.Core.interfaces
 
         Task<IReadOnlyList<T>> GetAllAsync(params Expression<Func<T, object>>[] includes);
 
-        Task<T> GetById(int Id);
+        Task<T?> GetByIdAsync(int Id);
 
-        Task<T> GetById(int Id, params Expression<Func<T, object>>[] includes);
+        Task<T?> GetByIdAsync(int Id, params Expression<Func<T, object>>[] includes);
 
-        Task UpdateAsync(T entity);
+        void Update(T entity);
 
-        Task Delete(int Id);
+        Task<bool> DeleteAsync(int Id);
 
         Task AddAsync(T entity);
 
