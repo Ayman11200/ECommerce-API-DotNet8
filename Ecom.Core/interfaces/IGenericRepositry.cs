@@ -24,5 +24,7 @@ namespace Ecom.Core.interfaces
 
         Task AddAsync(T entity);
 
+        Task<int> CountAsync();
+
     }
 }

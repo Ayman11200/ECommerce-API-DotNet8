@@ -3,6 +3,7 @@ using Ecom.API.Helper;
 using Ecom.Core.DTO;
 using Ecom.Core.Entities.Product;
 using Ecom.Core.interfaces;
+using Ecom.Core.Sharing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,14 +19,26 @@ namespace Ecom.API.Controllers
 
 
 
-        [HttpGet("{Id}")]
-        [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetById(int id)
-        {
-            var product = await work.ProductRepository.GetByIdAsync(id, x => x.Photos, x => x.Category);
+      
+     
 
-            if (product == null) return NotFound(new ResponseAPI(404, $"Not Found Product Id = {id}"));
+        [HttpGet]
+        [ProducesResponseType(typeof(Pagination<ProductDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAll([FromQuery] ProductParams productParams)
+        {
+            var productDto = await work.ProductRepository.GetAllAsync(productParams);
+
+            return Ok(new Pagination<ProductDto>(productParams.PageNumber, productParams.PageSize, productParams.TotalCount, productDto));
+            
+        }
+
+
+        [HttpGet("{Id}")]
+        public async Task<IActionResult> GetById(int Id)
+        {
+            var product = await work.ProductRepository.GetByIdAsync(Id, x => x.Photos, x => x.Category);
+
+            if (product == null) return NotFound(new ResponseAPI(404, $"Not Found Product Id = {Id}"));
 
             ProductDto productDto = mapper.Map<ProductDto>(product);
 
@@ -51,7 +64,7 @@ namespace Ecom.API.Controllers
 
 
 
-        [HttpPut("{Id},{entity}")]
+        [HttpPut("{Id}")]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
@@ -61,7 +74,7 @@ namespace Ecom.API.Controllers
             if (Id != updateProductDto.Id)
                 return BadRequest(new ResponseAPI(400, "Route id does not match body id."));
 
-            var updated = await work.ProductRepository.DeleteAsync(Id);
+            var updated = await work.ProductRepository.UpdateAsync(updateProductDto);
 
             if(! updated)
                 return NotFound(new ResponseAPI(404, $"Product with Id = {Id} not found."));

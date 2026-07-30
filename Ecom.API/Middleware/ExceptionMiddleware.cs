@@ -48,9 +48,11 @@ namespace Ecom.API.Middleware
                 context.Response.StatusCode =
                     (int)HttpStatusCode.InternalServerError;
 
-                var response = new ResponseAPI(
+                var response = new ApiExceptions(
                     context.Response.StatusCode,
-                    ex.Message);
+                    ex.Message,
+                    ex.ToString()
+                    );
 
                 var json = JsonSerializer.Serialize(response);
 

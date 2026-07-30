@@ -1,14 +1,17 @@
-﻿using Ecom.Core.Entities.Product;
-using AutoMapper;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Ecom.Core.Entities.Product;
 using Ecom.Core.interfaces;
+using Ecom.Core.Services;
+using Ecom.Core.Sharing;
 using Ecom.infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Ecom.Core.Services;
 
 namespace Ecom.infrastructure.Repositires
 {
@@ -22,6 +25,56 @@ namespace Ecom.infrastructure.Repositires
             this.context = context;
             this.mapper = mapper;
             this.imageManagementService = imageManagementService;
+        }
+
+        public async Task<IEnumerable<ProductDto>> GetAllAsync(ProductParams productParams)
+        {
+            var query = context.Products
+                .Include(m => m.Photos)
+                .Include(m => m.Category)
+                .AsNoTracking();
+
+
+            if (!string.IsNullOrEmpty(productParams.Search))
+            {
+                var searchWords = productParams.Search.Split(' ');
+
+                query = query.Where(m => searchWords.All(word =>
+
+                m.Name.ToLower().Contains(word.ToLower()) ||
+                m.Description.ToLower().Contains(word.ToLower())
+
+                    )); 
+            }
+
+
+
+            if (productParams.CategoryId.HasValue)
+                query = query.Where(m => m.CategoryId == productParams.CategoryId);
+
+
+            if (!string.IsNullOrEmpty(productParams.Sort)) 
+            {
+
+                query = productParams.Sort switch
+                {
+                    "PriceAce" => query.OrderBy(m => m.NewPrice),
+                    "PriceDce" => query.OrderByDescending(m => m.NewPrice),
+                    _ => query.OrderBy(m => m.Name),
+                };
+            }
+
+            productParams.TotalCount = await query.CountAsync();
+
+            query = query.Skip((productParams.PageSize) * (productParams.PageNumber - 1))
+                .Take(productParams.PageSize);
+
+            var result = await query
+             .ProjectTo<ProductDto>(mapper.ConfigurationProvider)
+             .ToListAsync();
+
+            return result;
+
         }
 
 

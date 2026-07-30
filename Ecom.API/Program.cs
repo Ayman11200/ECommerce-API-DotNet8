@@ -1,8 +1,9 @@
 using AutoMapper;
+using Ecom.API.Extensions;
 using Ecom.infrastructure;
+using Ecom.infrastructure.Data;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text;
-using Ecom.API.Extensions;
 
 namespace Ecom.API
 {
@@ -38,8 +39,9 @@ namespace Ecom.API
             app.UseAuthorization();
 
 
-            app.MapControllers();
 
+            app.MapControllers();
+           
             app.Run();
         }
     }
