@@ -71,10 +71,8 @@ namespace Ecom.API.Controllers
         public async Task<IActionResult> Update(int Id, UpdateProductDto updateProductDto)
         {
            
-            if (Id != updateProductDto.Id)
-                return BadRequest(new ResponseAPI(400, "Route id does not match body id."));
-
-            var updated = await work.ProductRepository.UpdateAsync(updateProductDto);
+     
+            var updated = await work.ProductRepository.UpdateAsync(Id,updateProductDto);
 
             if(! updated)
                 return NotFound(new ResponseAPI(404, $"Product with Id = {Id} not found."));

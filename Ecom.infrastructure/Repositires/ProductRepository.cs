@@ -99,15 +99,45 @@ namespace Ecom.infrastructure.Repositires
 
 
 
-        public async Task<bool> UpdateAsync( UpdateProductDto updateProductDto)
+        public async Task<bool> UpdateAsync(int Id , UpdateProductDto updateProductDto)
         {
-            var product = await context.Products.Include(p => p.Photos).FirstOrDefaultAsync(p => p.Id == updateProductDto.Id);
+            var product = await context.Products.Include(p => p.Photos).FirstOrDefaultAsync(p => p.Id == Id);
 
             if (product == null) return false;
 
-            mapper.Map( updateProductDto , product );
 
-            if (updateProductDto is not null && updateProductDto.Photos.Any()) 
+
+           
+            if (!string.IsNullOrWhiteSpace(updateProductDto.Name))
+            {
+                product.Name = updateProductDto.Name;
+            }
+
+     
+            if (!string.IsNullOrWhiteSpace(updateProductDto.Description))
+            {
+                product.Description = updateProductDto.Description;
+            }
+
+            if (updateProductDto.NewPrice.HasValue)
+            {
+                product.NewPrice = updateProductDto.NewPrice.Value;
+            }
+
+            if (updateProductDto.OldPrice.HasValue)
+            {
+                product.OldPrice = updateProductDto.OldPrice.Value;
+            }
+
+            if (updateProductDto.CategoryId.HasValue)
+            {
+                product.CategoryId = updateProductDto.CategoryId.Value;
+            }
+
+
+
+
+            if (updateProductDto.Photos is not null && updateProductDto.Photos.Any()) 
             {
 
                 foreach (var oldPhoto in product.Photos)
@@ -115,6 +145,7 @@ namespace Ecom.infrastructure.Repositires
                     imageManagementService.DeleteImage(oldPhoto.ImageName);
                 }
                 context.Photos.RemoveRange(product.Photos);
+
 
                 var ImagePathes = await imageManagementService.AddImageAsync(updateProductDto.Photos, updateProductDto.Name);
                 

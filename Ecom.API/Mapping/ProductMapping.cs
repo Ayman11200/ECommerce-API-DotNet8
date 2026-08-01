@@ -10,15 +10,27 @@ namespace Ecom.API.Mapping
         public ProductMapping()
         {
             CreateMap<Product, ProductDto>()
-                .ForMember(x => x.CategoryName,
-                op => op.MapFrom(Source => Source.Category.Name))
-                .ReverseMap();
+    .ForMember(dest => dest.CategoryName,
+        opt => opt.MapFrom(src => src.Category.Name));
+            
 
-            CreateMap<Photo, PhotoDto>().ReverseMap();
 
-            CreateMap<AddProductDto, Product>().ForMember(x => x.Photos, op => op.Ignore()).ReverseMap();
+            CreateMap<Photo, PhotoDto>();
 
-            CreateMap<UpdateProductDto, Product>().ForMember(x => x.Photos, op => op.Ignore()).ReverseMap();
+
+            CreateMap<AddProductDto, Product>()
+                .ForMember(dest => dest.Photos,
+                    opt => opt.Ignore());
+
+
+    //        CreateMap<UpdateProductDto, Product>()
+    //.ForMember(x => x.Photos, op => op.Ignore())
+    //.ForAllMembers(opt =>
+    //    opt.Condition((src, dest, srcMember, destMember, context)
+    //        => srcMember != null));
+
+
+            
         }
 
     }

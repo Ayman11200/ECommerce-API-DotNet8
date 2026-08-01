@@ -27,7 +27,17 @@ public record AddProductDto
     public IFormFileCollection Photos { get; init; } 
 }
 
-public record UpdateProductDto : AddProductDto
+public record UpdateProductDto
 {
-    public int Id { get; init; }
+    public string? Name { get; init; }
+
+    public string? Description { get; init; }
+
+    public decimal? NewPrice { get; init; }
+
+    public decimal? OldPrice { get; init; }
+
+    public int? CategoryId { get; init; }
+
+    public IFormFileCollection? Photos { get; init; }
 }

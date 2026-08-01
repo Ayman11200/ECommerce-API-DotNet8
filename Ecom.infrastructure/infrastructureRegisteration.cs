@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Ecom.Core.Services;
 using Ecom.infrastructure.Repositires.Service;
 using Microsoft.Extensions.FileProviders;
+using StackExchange.Redis;
 
 namespace Ecom.infrastructure
 {
@@ -27,6 +28,13 @@ namespace Ecom.infrastructure
             //services.AddScoped<IProductRepository, ProductRepository>();
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var config = ConfigurationOptions.Parse(configuration.GetConnectionString("redis"));
+
+                return ConnectionMultiplexer.Connect(config);
+            });
 
             services.AddSingleton<IImageManagementService, ImageManagementService>();
 
