@@ -14,6 +14,8 @@ namespace Ecom.Core.interfaces
 
         public ICustomerBasketRepository CustomerBasketRepository { get; }
 
+        public IAuth Auth {  get; }
+
         Task<int> SaveChangesAsync();
     }
 }

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.ComponentModel.DataAnnotations;
 
-namespace Ecom.Core.DTO
+namespace Ecom.Core.Dto
 {
 
     public record AddCategoryDto

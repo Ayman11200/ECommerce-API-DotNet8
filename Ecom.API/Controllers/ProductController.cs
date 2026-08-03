@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using Ecom.API.Helper;
-using Ecom.Core.DTO;
+using Ecom.Core.Dto;
 using Ecom.Core.Entities.Product;
 using Ecom.Core.interfaces;
 using Ecom.Core.Sharing;

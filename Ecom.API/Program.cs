@@ -25,6 +25,8 @@ namespace Ecom.API
             var app = builder.Build();
 
             app.UseCustomExceptionMiddleware();
+            app.UseAuthentication();
+            app.UseAuthorization();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
@@ -35,9 +37,6 @@ namespace Ecom.API
             app.UseStatusCodePagesWithReExecute("/errors/{0}");
 
             app.UseHttpsRedirection();
-
-            app.UseAuthorization();
-
 
 
             app.MapControllers();

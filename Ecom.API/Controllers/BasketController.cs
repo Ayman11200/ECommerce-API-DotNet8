@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using Ecom.API.Helper;
-using Ecom.Core.DTO;
+using Ecom.Core.Dto;
 using Ecom.Core.Entities;
 using Ecom.Core.interfaces;
 using Microsoft.AspNetCore.Http;
