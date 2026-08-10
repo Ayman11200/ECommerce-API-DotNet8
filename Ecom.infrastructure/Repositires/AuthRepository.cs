@@ -7,6 +7,7 @@ using Ecom.infrastructure.Data;
 using MailKit.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Org.BouncyCastle.Asn1.Crmf;
 using StackExchange.Redis;
 using System;
@@ -14,6 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
 
 namespace Ecom.infrastructure.Repositires
 {
@@ -24,31 +26,33 @@ namespace Ecom.infrastructure.Repositires
         private readonly SignInManager<AppUser> signInManager;
         private readonly IGenerateToken generateToken;
         private readonly AppDbContext context;
+        private readonly IConfiguration configuration;
 
-        public AuthRepository(UserManager<AppUser> userManager, IEmailService emailService, SignInManager<AppUser> signInManager, IGenerateToken generateToken, AppDbContext context)
+        public AuthRepository(UserManager<AppUser> userManager, IEmailService emailService, SignInManager<AppUser> signInManager, IGenerateToken generateToken, AppDbContext context, IConfiguration configuration)
         {
             this.userManager = userManager;
             this.emailService = emailService;
             this.signInManager = signInManager;
             this.generateToken = generateToken;
             this.context = context;
+            this.configuration = configuration;
         }
 
 
-        public async Task<string?> RegisterAsync(RegisterDto registerDto)
+        public async Task<AuthResult> RegisterAsync(RegisterDto registerDto)
         {
 
             if (registerDto is null)
-                return null;
+                return AuthResult.Fail("Invalid request");
 
-            if(await userManager.FindByNameAsync(registerDto.UserName) is not null)
+            if (await userManager.FindByNameAsync(registerDto.UserName) is not null)
             {
-                return "This username is already registerd";
+                return AuthResult.Fail("This username is already registerd");
             }
 
             if (await userManager.FindByEmailAsync(registerDto.Email) is not null)
             {
-                return "This Email is already registerd";
+                return AuthResult.Fail("This Email is already registerd");
             }
 
             AppUser user = new()
@@ -58,86 +62,90 @@ namespace Ecom.infrastructure.Repositires
                 DisplayName = registerDto.DisplayName
             };
 
-            var result = await userManager.CreateAsync(user,registerDto.Password);
+            var result = await userManager.CreateAsync(user, registerDto.Password);
 
             if (result.Succeeded is not true)
             {
-                return result.Errors.ToList()[0].Description;
+                return AuthResult.Fail(result.Errors.ToList()[0].Description);
             }
 
             string token = await userManager.GenerateEmailConfirmationTokenAsync(user);
             await SendEmail(user.Email, token, "Active", "ActiveEmail", "Please active your email, click on button to active");
 
-            return "done";
+            return AuthResult.Ok("done");
         }
 
         public async Task SendEmail(string email, string code, string component, string subject, string message)
         {
-            var result = new EmailDto(email, "almohandis80@gmail.com"
+            var result = new EmailDto(email, configuration["EmailSetting:From"]
                 , subject, EmailStringBody.send(email, code, component, message));
 
-            await emailService.SendEmailAsync(result);    
+            await emailService.SendEmailAsync(result);
         }
 
 
-        public async Task<string?> Login(LoginDto loginDto)
+        public async Task<AuthResult> Login(LoginDto loginDto)
         {
             if (loginDto == null)
-                return null;
+                return AuthResult.Fail("Invalid request");
 
             var foundUser = await userManager.FindByEmailAsync(loginDto.Email);
 
             if (foundUser is null)
-                return "No user with this Email, Please Register";
+                return AuthResult.Fail("Invalid email or password");
+
 
             if (!foundUser.EmailConfirmed)
             {
                 var token = await userManager.GenerateEmailConfirmationTokenAsync(foundUser);
-                await SendEmail(foundUser.Email,token, "Active", "ActiveEmail", "Please active your email, click on button to active");
-                return "Please confirem your email first, we have sent activate to your E-mail";
+                await SendEmail(foundUser.Email, token, "Active", "ActiveEmail", "Please active your email, click on button to active");
+                return AuthResult.Fail("Please confirm your email first, we have sent an activation link");
             }
 
             var result = await signInManager.CheckPasswordSignInAsync(foundUser, loginDto.Password, true);
 
-            if(result.Succeeded)
+            if (result.IsLockedOut)
             {
-                return generateToken.GetAndCreateToken(foundUser);
+                return AuthResult.Fail("Account locked due to multiple failed attempts, try again later");
             }
 
-            return "Please check your email or password , something went wrong!";
+            if (result.Succeeded)
+            {
+                return AuthResult.Ok(null, generateToken.GetAndCreateToken(foundUser));
 
+            }
+
+            return AuthResult.Fail("Invalid email or password");
 
         }
 
         public async Task<bool> SendEmailForForgetPassword(string email)
         {
-            var foundUser = await userManager.FindByEmailAsync(email); 
+            var foundUser = await userManager.FindByEmailAsync(email);
 
-            if(foundUser is null)
+            if (foundUser is null)
                 return false;
 
             var token = await userManager.GeneratePasswordResetTokenAsync(foundUser);
-            await SendEmail(foundUser.Email, token, "Active", "ActiveEmail", "Please active your email, click on button to active");
-
+            await SendEmail(foundUser.Email, token, "ResetPassword", "Reset Your Password",
+           "Click the button below to reset your password");
             return true;
         }
 
-        public async Task<string?> ResetPassword(PasswordDto passwordDto)
+        public async Task<AuthResult> ResetPassword(PasswordDto passwordDto)
         {
             var foundUser = await userManager.FindByEmailAsync(passwordDto.Email);
 
             if (foundUser is null)
-            {
-                return null;
-            }
+                return AuthResult.Fail("Invalid request");
 
             var result = await userManager.ResetPasswordAsync(foundUser, passwordDto.Token, passwordDto.Password);
 
             if (result.Succeeded)
             {
-                return "done";
+                return AuthResult.Ok("done");
             }
-            return result.Errors.ToList()[0].Description;
+            return AuthResult.Fail(result.Errors.ToList()[0].Description);
         }
 
         public async Task<bool> ActiveAccount(ActiveAccountDto accountDto)
@@ -179,8 +187,7 @@ namespace Ecom.infrastructure.Repositires
                 await context.Addresses.AddAsync(address);
             }
             else
-            {
-                context.Entry(Myaddress).State = EntityState.Detached;
+            {              
                 address.Id = Myaddress.Id;
                 address.AppUserId = Myaddress.AppUserId;
                 context.Addresses.Update(address);
@@ -190,12 +197,12 @@ namespace Ecom.infrastructure.Repositires
             return true;
         }
 
-        public async Task<Address> getUserAddress(string email)
+        public async Task<Address?> getUserAddress(string email)
         {
             var User = await userManager.FindByEmailAsync(email);
-            var address = await context.Addresses.FirstOrDefaultAsync(m => m.AppUserId == User.Id);
+            if (User is null) return null;
 
-            return address;
+            return await context.Addresses.FirstOrDefaultAsync(m => m.AppUserId == User.Id);
         }
 
     }

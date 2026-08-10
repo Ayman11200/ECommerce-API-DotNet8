@@ -4,6 +4,7 @@ using Ecom.infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Ecom.infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260808222239_AddOrderEntity")]
+    partial class AddOrderEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -167,24 +170,6 @@ namespace Ecom.infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("DeliveryMethods");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            DeliveryTime = "5 Days",
-                            Description = "The fast Delivery in the world",
-                            Name = "DHL",
-                            Price = 20m
-                        },
-                        new
-                        {
-                            Id = 2,
-                            DeliveryTime = "7 Days",
-                            Description = "Make your product save",
-                            Name = "XXX",
-                            Price = 15m
-                        });
                 });
 
             modelBuilder.Entity("Ecom.Core.Entities.Order.Order", b =>
@@ -523,6 +508,9 @@ namespace Ecom.infrastructure.Data.Migrations
                                 .IsRequired()
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
+
+                            b1.Property<int>("Id")
+                                .HasColumnType("int");
 
                             b1.Property<string>("LastName")
                                 .IsRequired()

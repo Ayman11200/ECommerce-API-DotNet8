@@ -10,11 +10,13 @@ namespace Ecom.API.Controllers
     public class BaseController : ControllerBase
     {
         protected readonly IUnitOfWork work;
-        protected readonly IMapper mapper;  
-        public BaseController(IUnitOfWork work , IMapper mapper)
+        protected readonly IMapper mapper;
+
+        public BaseController(IUnitOfWork work, IMapper mapper)
         {
             this.work = work;
             this.mapper = mapper;
+    
         }
     }
 }

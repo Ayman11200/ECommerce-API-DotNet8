@@ -6,13 +6,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
+
 namespace Ecom.API.Controllers
 {
 
     public class AccountController : BaseController
     {
-        public AccountController(IUnitOfWork work, IMapper mapper) : base(work, mapper)
+        private readonly IConfiguration configuration;
+        public AccountController(IUnitOfWork work, IMapper mapper ,IConfiguration configuration) : base(work, mapper)
         {
+            this.configuration = configuration;
         }
 
         [HttpPost("Register")]
@@ -20,30 +23,31 @@ namespace Ecom.API.Controllers
         {
             var result = await work.Auth.RegisterAsync(registerDto);
 
-            if (result != "done")
+            if (!result.Success)
             {
-                return BadRequest(new ResponseAPI(400, result));
+                return BadRequest(new ResponseAPI(400, result.Message));
             }
             return Ok();
         }
+
 
         [HttpPost("Login")]
         public async Task<IActionResult> Login(LoginDto loginDto)
         {
             var result = await work.Auth.Login(loginDto);
 
-            if (result is null || result.StartsWith("Please") || result.StartsWith(value: "No"))
+            if (!result.Success)
             {
-                return BadRequest(new ResponseAPI(400, result));
+                return BadRequest(new ResponseAPI(400, result.Message));
             }
 
-            Response.Cookies.Append("token", result, new CookieOptions
+            Response.Cookies.Append("token", result.Token, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
                 IsEssential = true,
-                Domain = "localhost",
+                Domain = configuration["CookieSettings:Domain"],
                 Expires = DateTime.Now.AddMinutes(60)
             });
 
@@ -53,57 +57,48 @@ namespace Ecom.API.Controllers
 
 
         [HttpPost("Active-Account")]
-        public async Task<ActionResult<ActiveAccountDto>> active(ActiveAccountDto AccountDto)
+        public async Task<ActionResult<ActiveAccountDto>> Active(ActiveAccountDto AccountDto)
         {
             var result = await work.Auth.ActiveAccount(AccountDto);
             return result ? Ok(new ResponseAPI(200)) : BadRequest(new ResponseAPI(400));
         }
 
-
-        [HttpGet("Send-email-forget-password")]
-        public async Task<IActionResult> forget(string email)
+        [HttpPost("Send-email-forget-password")]
+        public async Task<IActionResult> Forget(string email)
         {
             var result = await work.Auth.SendEmailForForgetPassword(email);
 
             return result ? Ok(new ResponseAPI(200)) : BadRequest(new ResponseAPI(400));
         }
 
-        [HttpPost("reset-password")]
-        public async Task<IActionResult> reset(PasswordDto restPasswordDTO)
+        [HttpPost("Reset-password")]
+        public async Task<IActionResult> Reset(PasswordDto restPasswordDTO)
         {
             var result = await work.Auth.ResetPassword(restPasswordDTO);
-            if (result == "done")
+            if (result.Success)
             {
                 return Ok(new ResponseAPI(200));
             }
-            return BadRequest(new ResponseAPI(400));
+            return BadRequest(new ResponseAPI(400, result.Message));
         }
 
 
 
 
-        [HttpGet("Logout")]
-        public void logout()
+        [HttpPost("Logout")]
+        public IActionResult Logout()
         {
-
-            Response.Cookies.Append("token", "", new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                IsEssential = true,
-                Domain = "localhost",
-                Expires = DateTime.Now.AddDays(-1)
-            });
+            Response.Cookies.Delete("token");
+            return Ok(new ResponseAPI(200));
         }
-
 
         [Authorize]
-        [HttpGet("get-user-name")]
+        [HttpGet("Get-user-name")]
         public IActionResult GetUserName()
         {
             return Ok(new ResponseAPI(200, User.Identity.Name));
         }
+
         [HttpGet("IsUserAuth")]
         public async Task<IActionResult> IsUserAuth()
         {

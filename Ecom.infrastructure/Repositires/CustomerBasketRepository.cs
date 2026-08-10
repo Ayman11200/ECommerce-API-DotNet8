@@ -58,6 +58,7 @@ namespace Ecom.infrastructure.Repositires
             {
                 var product = products[item.Id];
 
+                item.ProductId = product.Id;
                 item.Name = product.Name;
                 item.Price = product.NewPrice;
                 item.Description = product.Description;

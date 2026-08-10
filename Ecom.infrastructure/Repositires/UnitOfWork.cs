@@ -4,6 +4,7 @@ using Ecom.Core.interfaces;
 using Ecom.Core.Services;
 using Ecom.infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
@@ -23,6 +24,7 @@ namespace Ecom.infrastructure.Repositires
         private readonly IEmailService _emailService;
         private readonly SignInManager<AppUser> _signInManager;
         private readonly IGenerateToken _generateToken;
+        private readonly IConfiguration _configuration;
 
         public ICategoryRepository CategoryRepository {  get;  }
         public IProductRepository ProductRepository { get; }
@@ -32,8 +34,9 @@ namespace Ecom.infrastructure.Repositires
 
         public UnitOfWork(AppDbContext context, IMapper mapper, IImageManagementService imageManagementService,
             IConnectionMultiplexer redis, UserManager<AppUser> userManager,
-            IEmailService emailService, SignInManager<AppUser> signInManager, IGenerateToken generateToken)
+            IEmailService emailService, SignInManager<AppUser> signInManager, IGenerateToken generateToken, IConfiguration configuration)
         {
+
             _context = context;
             _mapper = mapper;
             _imageManagementService = imageManagementService;
@@ -42,6 +45,9 @@ namespace Ecom.infrastructure.Repositires
             _emailService = emailService;
             _signInManager = signInManager;
             _generateToken = generateToken;
+            _configuration = configuration;
+
+
 
             CategoryRepository = new CategoryRepository(_context);
 
@@ -49,8 +55,8 @@ namespace Ecom.infrastructure.Repositires
 
             CustomerBasketRepository = new CustomerBasketRepository(_redis, _context);
 
-            Auth = new AuthRepository(_userManager, _emailService, _signInManager,_generateToken);
-           
+            Auth = new AuthRepository(_userManager, _emailService, _signInManager, _generateToken, _context, _configuration);
+            
         }
 
 

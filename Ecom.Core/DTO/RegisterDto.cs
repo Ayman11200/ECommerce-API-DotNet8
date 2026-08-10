@@ -32,4 +32,6 @@ namespace Ecom.Core.Dto
         public string Token { get; set; }
     }
 
+
+  
 }

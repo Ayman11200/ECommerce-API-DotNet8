@@ -1,4 +1,5 @@
 ﻿using Ecom.Core.Dto;
+using Ecom.Core.Entities;
 using Ecom.Core.Services;
 using Ecom.Core.Sharing;
 using System;
@@ -11,16 +12,20 @@ namespace Ecom.Core.interfaces
 {
     public interface IAuth
     {
-        Task<string?> RegisterAsync(RegisterDto registerDto);
+        Task<AuthResult> RegisterAsync(RegisterDto registerDto);
         Task SendEmail(string email, string code, string component, string subject, string message);
 
-        Task<string?> Login(LoginDto loginDto);
+        Task<AuthResult> Login(LoginDto loginDto);
 
         Task<bool> SendEmailForForgetPassword(string email);
 
-        Task<string?> ResetPassword(PasswordDto passwordDto);
+        Task<AuthResult> ResetPassword(PasswordDto passwordDto);
 
         Task<bool> ActiveAccount(ActiveAccountDto AccountDto);
+
+        Task<bool> UpdateAddress(string email, Address address);
+
+        Task<Address?> getUserAddress(string email);
 
 
 
