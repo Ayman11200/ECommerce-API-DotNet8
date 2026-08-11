@@ -14,13 +14,14 @@ namespace Ecom.Core.Entities.Order
         {
             
         }
-        public Order(string buyerEmail, decimal subTotal, DeliveryMethod deliveryMethod, List<OrderItem> orderItems, ShippingAddress shippingAddress)
+        public Order(string buyerEmail, decimal subTotal, DeliveryMethod deliveryMethod, List<OrderItem> orderItems, ShippingAddress shippingAddress, string paymentIntentId)
         {
             BuyerEmail = buyerEmail;
             SubTotal = subTotal;
             DeliveryMethod = deliveryMethod;
             OrderItems = orderItems;
             ShippingAddress = shippingAddress;
+            PaymentIntentId = paymentIntentId;
         }
 
         [Required]
@@ -39,6 +40,8 @@ namespace Ecom.Core.Entities.Order
 
         [Required]
         public int DeliveryMethodId { get; set; }
+
+        public string PaymentIntentId { get; set; }
 
 
         public DeliveryMethod DeliveryMethod { get; set; }
