@@ -1,6 +1,7 @@
 ﻿using Ecom.Core.DTO;
 using Ecom.Core.Entities.Product;
 using Ecom.Core.interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -9,6 +10,7 @@ namespace Ecom.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class RatingsController : ControllerBase
     {
         private readonly IRatingRepository rating;

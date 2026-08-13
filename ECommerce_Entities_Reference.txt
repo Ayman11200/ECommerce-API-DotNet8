@@ -1,0 +1,547 @@
+=== BaseEntity<T> ===
+
+Generic base class. Not an entity itself; provides the primary key for entities that inherit from it.
+
+Properties:
+- Id : T
+
+Relationships:
+- None
+
+Foreign Keys:
+- None
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- None
+
+=== AppUser ===
+
+Inherits: Microsoft.AspNetCore.Identity.IdentityUser (IdentityDbContext<AppUser>)
+
+Properties:
+- Id : string (from IdentityUser, PK)
+- DisplayName : string
+- Address : Address?
+
+Inherited IdentityUser properties:
+- UserName : string?
+- NormalizedUserName : string?
+- Email : string?
+- NormalizedEmail : string?
+- EmailConfirmed : bool
+- PasswordHash : string?
+- SecurityStamp : string?
+- ConcurrencyStamp : string?
+- PhoneNumber : string?
+- PhoneNumberConfirmed : bool
+- TwoFactorEnabled : bool
+- LockoutEnd : DateTimeOffset?
+- LockoutEnabled : bool
+- AccessFailedCount : int
+
+Relationships:
+- One-to-one with Address (Address holds the FK AppUserId)
+
+Foreign Keys:
+- None on AppUser itself
+
+Navigation Properties:
+- Address : Address? -> Address
+
+Delete Behavior:
+- None configured on AppUser side; the Address->AppUser relationship is Cascade
+
+=== Address ===
+
+Inherits: BaseEntity<int>
+
+Properties:
+- Id : int (PK)
+- FirstName : string
+- LastName : string
+- City : string
+- ZipCode : string
+- Street : string
+- State : string
+- AppUserId : string
+
+Relationships:
+- One-to-one with AppUser (each AppUser has one Address; AppUserId is unique index)
+
+Foreign Keys:
+- AppUserId : string -> AppUser
+
+Navigation Properties:
+- AppUser : AppUser -> AppUser
+
+Delete Behavior:
+- Cascade (AppUser -> Address)
+
+=== Category ===
+
+Inherits: BaseEntity<int>
+
+Properties:
+- Id : int (PK)
+- Name : string (required, MaxLength 30 via Fluent API)
+- Description : string? (optional, MaxLength 500 via Fluent API)
+- Products : ICollection<Product> (initialized as HashSet<Product>)
+
+Relationships:
+- One-to-many with Product (configured by convention via CategoryId FK on Product; also via Fluent config)
+
+Foreign Keys:
+- None on Category itself
+
+Navigation Properties:
+- Products : ICollection<Product> -> Product
+
+Delete Behavior:
+- Cascade (Product.CategoryId -> Category)
+
+=== Product ===
+
+Inherits: BaseEntity<int>
+
+Properties:
+- Id : int (PK)
+- Name : string (required)
+- Description : string (required)
+- NewPrice : decimal (required, decimal(18,2) via Fluent API)
+- OldPrice : decimal (decimal(18,2) via Fluent API)
+- CategoryId : int (required)
+- Rating : double (aggregated/round-robin rating, computed manually in RatingReposiroty, not a computed column)
+- Category : Category (virtual)
+- Photos : List<Photo> (virtual)
+
+Relationships:
+- Many-to-one with Category (FK CategoryId)
+- One-to-many with Photo (Photos collection on Product)
+- Note: Product does NOT have a Ratings navigation property; the Rating->Product relationship is configured as one-to-many with no inverse navigation (Rating has FK ProductId)
+
+Foreign Keys:
+- CategoryId : int -> Category
+
+Navigation Properties:
+- Category : Category -> Category
+- Photos : List<Photo> -> Photo
+
+Delete Behavior:
+- CategoryId -> Cascade (deleting a Category deletes its Products)
+- Photos -> Cascade (Photo.ProductId -> Product)
+
+=== Photo ===
+
+Inherits: BaseEntity<int>
+
+Properties:
+- Id : int (PK)
+- ImageName : string
+- ProductId : int
+- Product : Product (virtual)
+
+Relationships:
+- Many-to-one with Product
+
+Foreign Keys:
+- ProductId : int -> Product
+
+Navigation Properties:
+- Product : Product -> Product
+
+Delete Behavior:
+- Cascade (ProductId -> Product)
+
+=== Rating ===
+
+Inherits: BaseEntity<int>
+
+Properties:
+- Id : int (PK)
+- Stars : short (Range(1,5))
+- Comment : string?
+- Review : DateTime (default DateTime.Now)
+- AppUserId : string
+- AppUser : AppUser (virtual)
+- ProductId : int
+- Product : Product (virtual)
+
+Relationships:
+- Many-to-one with AppUser (no inverse navigation on AppUser)
+- Many-to-one with Product (no inverse navigation on Product)
+
+Foreign Keys:
+- AppUserId : string -> AppUser
+- ProductId : int -> Product
+
+Navigation Properties:
+- AppUser : AppUser -> AppUser
+- Product : Product -> Product
+
+Delete Behavior:
+- AppUserId -> Cascade
+- ProductId -> Cascade
+
+Note: Database table name is "Rating" (singular) per the model snapshot / migration, even though the DbSet is "Ratings".
+
+=== Order ===
+
+Inherits: BaseEntity<int>
+
+Properties:
+- Id : int (PK)
+- BuyerEmail : string (required, MaxLength 256)
+- OrderDate : DateTime (required, default DateTime.Now)
+- Status : Status (required; stored as string MaxLength 20 via HasConversion in Fluent API)
+- SubTotal : decimal (required, decimal(18,2))
+- DeliveryMethodId : int (required)
+- PaymentIntentId : string
+- DeliveryMethod : DeliveryMethod
+- OrderItems : List<OrderItem>
+- ShippingAddress : ShippingAddress (owned type; stored in same "Orders" table)
+- Total : decimal (read-only computed property => SubTotal + DeliveryMethod.Price; not mapped to a DB column)
+
+Relationships:
+- Many-to-one with DeliveryMethod (Fluent API: HasOne/WithMany, required, Restrict)
+- One-to-many with OrderItem (Fluent API: HasMany/WithOne, FK OrderItem.OrderId, Cascade)
+- OwnsOne ShippingAddress (owned entity, required)
+
+Foreign Keys:
+- DeliveryMethodId : int -> DeliveryMethod
+
+Navigation Properties:
+- DeliveryMethod : DeliveryMethod -> DeliveryMethod
+- OrderItems : List<OrderItem> -> OrderItem
+- ShippingAddress : ShippingAddress (owned)
+
+Delete Behavior:
+- DeliveryMethodId -> Restrict
+- OrderItem.OrderId -> Cascade
+
+Indexes:
+- Index on BuyerEmail
+- Composite index on (BuyerEmail, OrderDate)
+
+=== OrderItem ===
+
+Inherits: BaseEntity<int>
+
+Properties:
+- Id : int (PK)
+- ProductItemId : int (required)
+- ProductName : string (required, MaxLength 200)
+- MainImage : string (required, MaxLength 300)
+- Quantity : int (required, Range(1, int.MaxValue))
+- Price : decimal (required, decimal(18,2))
+- OrderId : int (required)
+
+Relationships:
+- Many-to-one with Order (via FK OrderId; no navigation property on OrderItem side)
+
+Foreign Keys:
+- OrderId : int -> Order
+
+Navigation Properties:
+- None (OrderItem has no navigation properties)
+
+Delete Behavior:
+- Cascade (OrderId -> Order)
+
+=== DeliveryMethod ===
+
+Inherits: BaseEntity<int>
+
+Properties:
+- Id : int (PK)
+- Name : string (required, MaxLength 100, unique index)
+- Description : string (required, MaxLength 500)
+- Price : decimal (required, decimal(18,2))
+- DeliveryTime : string (required, MaxLength 50)
+
+Relationships:
+- None on DeliveryMethod side; referenced by Order (Order.DeliveryMethodId). No collection navigation on DeliveryMethod.
+
+Foreign Keys:
+- None
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- None configured on DeliveryMethod itself; Order side uses Restrict
+
+=== ShippingAddress ===
+
+Owned type (owned by Order via OwnsOne). Not a table entity; stored as columns in the "Orders" table.
+
+Properties:
+- FirstName : string (required, MaxLength 100)
+- LastName : string (required, MaxLength 100)
+- City : string (required, MaxLength 100)
+- ZipCode : string (required, MaxLength 20)
+- Street : string (required, MaxLength 200)
+- State : string (required, MaxLength 100)
+
+Relationships:
+- Owned by Order (one-to-one owned)
+
+Foreign Keys:
+- None (owned; uses OrderId as FK)
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- None (owned type, deleted with owner)
+
+=== CustomerBasket ===
+
+Not an EF Core entity. Stored in Redis via CustomerBasketRepository (JSON serialized). Not exposed in AppDbContext.
+
+Properties:
+- Id : string
+- PaymentIntentId : string?
+- ClientSecret : string?
+- BasketItems : List<BasketItem>
+
+Relationships:
+- Contains a collection of BasketItem (no FK / DB relationship)
+
+Foreign Keys:
+- None
+
+Navigation Properties:
+- BasketItems : List<BasketItem> -> BasketItem
+
+Delete Behavior:
+- None
+
+=== BasketItem ===
+
+Not an EF Core entity. Stored in Redis as part of CustomerBasket (JSON serialized). Not exposed in AppDbContext.
+
+Properties:
+- Id : int
+- ProductId : int
+- Name : string (= "")
+- Description : string (= "")
+- Quantity : int
+- Image : string (= "")
+- Price : decimal
+- CategoryName : string (= "")
+
+Relationships:
+- None (embedded value object within CustomerBasket)
+
+Foreign Keys:
+- None
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- None
+
+=== IdentityRole ===
+
+Microsoft.AspNetCore.Identity.IdentityRole (string key). Part of IdentityDbContext<AppUser>.
+
+Properties:
+- Id : string (PK)
+- Name : string?
+- NormalizedName : string? (unique index RoleNameIndex)
+- ConcurrencyStamp : string?
+
+Relationships:
+- One-to-many with IdentityUserRole<string>
+- One-to-many with IdentityRoleClaim<string>
+
+Foreign Keys:
+- None
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- None
+
+=== IdentityRoleClaim<string> ===
+
+Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>. Part of IdentityDbContext<AppUser>.
+
+Properties:
+- Id : int (PK)
+- RoleId : string (FK)
+- ClaimType : string?
+- ClaimValue : string?
+
+Relationships:
+- Many-to-one with IdentityRole (RoleId)
+
+Foreign Keys:
+- RoleId : string -> IdentityRole
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- Cascade (RoleId -> IdentityRole)
+
+=== IdentityUserClaim<string> ===
+
+Microsoft.AspNetCore.Identity.IdentityUserClaim<string>. Part of IdentityDbContext<AppUser>.
+
+Properties:
+- Id : int (PK)
+- UserId : string (FK)
+- ClaimType : string?
+- ClaimValue : string?
+
+Relationships:
+- Many-to-one with AppUser (UserId)
+
+Foreign Keys:
+- UserId : string -> AppUser
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- Cascade (UserId -> AppUser)
+
+=== IdentityUserLogin<string> ===
+
+Microsoft.AspNetCore.Identity.IdentityUserLogin<string>. Part of IdentityDbContext<AppUser>.
+
+Properties:
+- LoginProvider : string (PK, composite)
+- ProviderKey : string (PK, composite)
+- ProviderDisplayName : string?
+- UserId : string (FK)
+
+Relationships:
+- Many-to-one with AppUser (UserId)
+
+Foreign Keys:
+- UserId : string -> AppUser
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- Cascade (UserId -> AppUser)
+
+=== IdentityUserRole<string> ===
+
+Microsoft.AspNetCore.Identity.IdentityUserRole<string>. Part of IdentityDbContext<AppUser>.
+
+Properties:
+- UserId : string (PK, composite, FK)
+- RoleId : string (PK, composite, FK)
+
+Relationships:
+- Many-to-one with AppUser (UserId)
+- Many-to-one with IdentityRole (RoleId)
+
+Foreign Keys:
+- UserId : string -> AppUser
+- RoleId : string -> IdentityRole
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- Cascade (both UserId -> AppUser and RoleId -> IdentityRole)
+
+=== IdentityUserToken<string> ===
+
+Microsoft.AspNetCore.Identity.IdentityUserToken<string>. Part of IdentityDbContext<AppUser>.
+
+Properties:
+- UserId : string (PK, composite, FK)
+- LoginProvider : string (PK, composite)
+- Name : string (PK, composite)
+- Value : string?
+
+Relationships:
+- Many-to-one with AppUser (UserId)
+
+Foreign Keys:
+- UserId : string -> AppUser
+
+Navigation Properties:
+- None
+
+Delete Behavior:
+- Cascade (UserId -> AppUser)
+
+=== Enums ===
+
+=== Status ===
+Values:
+- Pending
+- PaymentReceived
+- PaymentFaild
+
+=== DbContext ===
+
+Context:
+- AppDbContext : IdentityDbContext<AppUser>
+
+DbSets:
+- Products : Product
+- Categories : Category
+- Photos : Photo
+- Addresses : Address
+- Orders : Order
+- OrderItems : OrderItem
+- DeliveryMethods : DeliveryMethod
+- Ratings : Rating
+
+Additional tables (from IdentityDbContext<AppUser> base):
+- AspNetUsers : AppUser
+- AspNetRoles : IdentityRole
+- AspNetRoleClaims : IdentityRoleClaim<string>
+- AspNetUserClaims : IdentityUserClaim<string>
+- AspNetUserLogins : IdentityUserLogin<string>
+- AspNetUserRoles : IdentityUserRole<string>
+- AspNetUserTokens : IdentityUserToken<string>
+
+Note: CustomerBasket and BasketItem are NOT exposed through AppDbContext; they are stored in Redis.
+
+=== Source Files Inspected ===
+
+Entities:
+- Ecom.Core\Entities\BaseEntity.cs
+- Ecom.Core\Entities\AppUser.cs
+- Ecom.Core\Entities\Address.cs
+- Ecom.Core\Entities\BasketItem.cs
+- Ecom.Core\Entities\CustomerBasket.cs
+- Ecom.Core\Entities\Product\Category.cs
+- Ecom.Core\Entities\Product\Product.cs
+- Ecom.Core\Entities\Product\Photo.cs
+- Ecom.Core\Entities\Product\Rating.cs
+- Ecom.Core\Entities\Order\Order.cs
+- Ecom.Core\Entities\Order\OrderItem.cs
+- Ecom.Core\Entities\Order\DeliveryMethod.cs
+- Ecom.Core\Entities\Order\ShippingAddress.cs
+- Ecom.Core\Entities\Order\Status.cs
+
+Configuration / Infrastructure:
+- Ecom.infrastructure\Data\AppDbContext.cs
+- Ecom.infrastructure\Data\Config\CategoryConfigration.cs
+- Ecom.infrastructure\Data\Config\ProductConfigration.cs
+- Ecom.infrastructure\Data\Config\OrderConfiguration.cs
+- Ecom.infrastructure\Data\Config\DeliveryMethodConfiguration.cs
+- Ecom.infrastructure\Data\Migrations\AppDbContextModelSnapshot.cs
+- Ecom.infrastructure\Data\Migrations\20260811161435_AddRating.cs
+- Ecom.infrastructure\Repositires\CustomerBasketRepository.cs
+- Ecom.infrastructure\Repositires\RatingReposiroty.cs
+- Ecom.infrastructure\Repositires\Service\OrderService.cs
+- Ecom.infrastructure\Repositires\Service\PaymentService.cs
+- Ecom.infrastructure\Repositires\Service\GenerateToken.cs
+- Ecom.infrastructure\infrastructureRegisteration.cs
+- Ecom.infrastructure\Data\Seed\ProductSeed.cs
