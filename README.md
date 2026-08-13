@@ -1,6 +1,13 @@
-# ECommerce API
+# Ecom — E-Commerce REST API (.NET 8)
 
-A full-featured **ASP.NET Core 8** e-commerce Web API built with a clean layered architecture (`Ecom.API`, `Ecom.infrastructure`, `Ecom.Core`). It provides the complete server side for an online store: product catalog, customer basket, authentication & email workflows, order placement, Stripe payments, and product ratings.
+A full-featured **ASP.NET Core 8** e-commerce backend built with a clean layered architecture
+(`Ecom.API`, `Ecom.infrastructure`, `Ecom.Core`). It powers the complete server side of an online
+store: product catalog, customer basket, authentication & email workflows, order placement, Stripe
+payments, and product ratings.
+
+Built as a hands-on backend project focused on getting the fundamentals right — proper layering,
+EF Core relationships, the Repository / Unit of Work pattern, and integrating a real third-party
+payment provider end to end — rather than just shipping features.
 
 ---
 
@@ -8,91 +15,93 @@ A full-featured **ASP.NET Core 8** e-commerce Web API built with a clean layered
 
 - [Features](#features)
 - [Architecture](#architecture)
-- [Technologies Used](#technologies-used)
+- [Tech Stack](#tech-stack)
 - [Authentication & Authorization](#authentication--authorization)
 - [Database](#database)
 - [Redis / Basket](#redis--basket)
-- [Payment](#payment)
+- [Payments (Stripe)](#payments-stripe)
 - [API Endpoints](#api-endpoints)
 - [Example Requests](#example-requests)
 - [Project Structure](#project-structure)
-- [Setup & Installation](#setup--installation)
-- [Configuration / Secrets](#configuration--secrets)
-- [Running the Project](#running-the-project)
+- [Getting Started](#getting-started)
+- [Configuration & Secrets](#configuration--secrets)
 
 ---
 
 ## Features
 
 **Catalog**
-
-- Product listing with **pagination**, **full-text search** (multi-word, across name & description), **category filtering**, and **sorting** (price ascending / descending / name).
+- Product listing with **pagination**, **multi-word search** (across name & description), **category
+  filtering**, and **sorting** (price ascending / descending / name).
 - Product detail with category and photo gallery.
-- Full CRUD for products and categories, including **multi-image upload** (files persisted under `wwwroot/Images/<ProductName>/`).
-- Product photo replacement / cleanup on update and delete.
+- Full CRUD for products and categories, including **multi-image upload** (files persisted under
+  `wwwroot/Images/<ProductName>/`), with old photos cleaned up from disk and DB on update/delete.
 
 **Customer Basket (Redis)**
-
-- Redis-backed shopping basket with a 3-day TTL.
-- On every basket update, product data (name, price, description, image, category) is **refreshed from SQL Server**, so the server always controls the authoritative price/name.
-- Stripe `PaymentIntentId` / `ClientSecret` stored alongside the basket for checkout.
+- Redis-backed shopping basket with a 3-day TTL, decoupled from user accounts (works for guests too).
+- On every basket update, each item is validated against SQL Server and its `Name`, `Price`,
+  `Description`, `CategoryName`, and `Image` are **overwritten with fresh database values** — the
+  client can never dictate price or name.
+- Carries the Stripe `PaymentIntentId` / `ClientSecret` once checkout starts.
 
 **Authentication & Authorization**
-
 - ASP.NET Core Identity with **JWT delivered inside an HttpOnly cookie**.
 - Registration with **email confirmation**, account activation, password reset via email.
-- Login with **account lockout** on repeated failures.
+- Login with **account lockout** on repeated failed attempts.
 - `[Authorize]`-protected order and payment endpoints.
 
-**Email Service**
-
-- SMTP email sending via **MailKit / MimeKit** (HTML body, styled activation / reset buttons).
-
 **Orders**
-
-- Authenticated users can create orders from their basket.
-- Order items, subtotal, delivery method selection, shipping address snapshot (owned entity), and order history per user.
+- Converts a basket into an order snapshot: order items, subtotal, delivery method, and a
+  shipping-address snapshot are all frozen at purchase time, so later catalog or address changes
+  never rewrite order history.
+- Re-submitting an order for a basket that already produced one (same Stripe `PaymentIntentId`)
+  replaces the previous order instead of creating a duplicate.
 
 **Payments (Stripe)**
-
-- Stripe **PaymentIntent** creation and update (amount = basket items + delivery price).
-- Payment **webhook** that marks orders `PaymentReceived` or `PaymentFaild` based on the Stripe event.
+- Creates/updates a Stripe **PaymentIntent** per basket (amount = basket items + delivery price).
+- A signature-verified **webhook** marks the matching order `PaymentReceived` on
+  `payment_intent.succeeded` or `PaymentFaild` on `payment_intent.payment_failed`.
 
 **Ratings & Reviews**
-
 - Users can rate products (1–5 stars) with an optional comment.
-- A product's aggregate rating is recalculated (rounded to nearest 0.5) and persisted on the product.
+- A product's aggregate rating is recalculated after every new rating, rounded to the nearest 0.5,
+  and persisted on the product itself.
 
-**Plumbing**
-
-- Custom exception middleware with **global exception handling**, per-IP **rate limiting** (80 requests / 30 seconds), and **security headers** (`X-Content-Type-Options`, `X-XSS-Protection`, `X-Frame-Options`).
-- Swagger / OpenAPI UI in development.
+**Cross-cutting concerns**
+- One middleware handles **global exception handling**, per-IP **rate limiting**
+  (80 requests / 30 seconds), and standard **security headers**
+  (`X-Content-Type-Options`, `X-XSS-Protection`, `X-Frame-Options`).
+- Swagger / OpenAPI UI in the `Development` environment.
 
 ---
 
 ## Architecture
 
-The solution is split into three projects with a strict one-way dependency direction:
+Three projects with a strict, one-way dependency direction:
 
 ```
-Ecom.API ──► Ecom.infrastructure ──► Ecom.Core
+Ecom.API  ──►  Ecom.infrastructure  ──►  Ecom.Core
 ```
 
 | Project | Responsibility |
 |---|---|
-| **`Ecom.Core`** | Domain layer. Entities, DTOs, repository & service interfaces, shared request/response helpers. No project references. |
-| **`Ecom.infrastructure`** | Data-access & infrastructure layer. `AppDbContext`, EF Core configurations, migrations, seed data, repository implementations, service implementations, Redis, and the single DI registration extension. |
-| **`Ecom.API`** | Presentation layer. Controllers, request pipeline, middleware, helpers, and AutoMapper profiles. |
+| **`Ecom.Core`** | Domain layer. Entities, DTOs, repository/service interfaces, shared result & param types. No dependency on EF Core or infrastructure. |
+| **`Ecom.infrastructure`** | Data access & infrastructure. `AppDbContext`, EF Core Fluent configurations, migrations, repository implementations, Redis, and Stripe/Email/JWT/Image services. |
+| **`Ecom.API`** | Presentation layer. Controllers, `Program.cs` composition root, middleware, and AutoMapper profiles. |
 
-**Patterns used**
+**Patterns in use**
+- **Generic Repository** (`IGenericRepository<T>`) plus concrete repositories for
+  aggregate-specific queries (`ProductRepository`, `CategoryRepository`, `CustomerBasketRepository`,
+  `RatingReposiroty`).
+- **Unit of Work** (`IUnitOfWork`) composing repositories over a shared `AppDbContext` and exposing
+  `SaveChangesAsync()` — it also exposes the `Auth` repository.
+- **Service classes** for cross-cutting concerns: `EmailService` (SMTP), `GenerateToken` (JWT),
+  `ImageManagementService` (file I/O), `OrderService` (order orchestration), `PaymentService` (Stripe).
+- **AutoMapper** profiles for entity ⇄ DTO mapping (`Ecom.API/Mapping`).
+- Centralized **DI registration** in `infrastructureRegisteration.infrastructureConfiguration(...)`,
+  called once from `Program.cs`.
 
-- **Generic Repository** (`IGenericRepository<T>`) with concrete repositories (`ProductRepository`, `CategoryRepository`, `CustomerBasketRepository`, `RatingRepository`).
-- **Unit of Work** (`IUnitOfWork`) that composes repositories over a single shared `AppDbContext` and exposes `SaveChangesAsync()`; it also exposes the `Auth` repository.
-- **Service classes** for cross-cutting concerns: `EmailService` (SMTP), `GenerateToken` (JWT), `ImageManagementService` (file I/O), `OrderService` (order orchestration), `PaymentService` (Stripe).
-- **AutoMapper** profiles for DTO ⇄ entity mapping (profiles live in `Ecom.API/Mapping`).
-- **Dependency injection** registered centrally in `infrastructureRegisteration.infrastructureConfiguration(...)`, called from `Program.cs`.
-
-**Request flow**
+**Typical request flow**
 
 ```
 Controller → IUnitOfWork / Service → Repository → AppDbContext (SQL Server) or Redis
@@ -100,57 +109,63 @@ Controller → IUnitOfWork / Service → Repository → AppDbContext (SQL Server
 
 ---
 
-## Technologies Used
+## Tech Stack
 
 | Technology | Version | Purpose |
 |---|---|---|
-| .NET / ASP.NET Core Web API | 8.0 | Application framework |
+| ASP.NET Core Web API | .NET 8 | Application framework |
 | Entity Framework Core | 8.0.7 | ORM + migrations |
-| SQL Server (SqlClient provider) | — | Persistent relational storage |
+| SQL Server | — | Persistent relational storage |
 | ASP.NET Core Identity | 8.0.7 | Users, password hashing, email confirmation, lockout |
-| Microsoft.AspNetCore.Authentication.JwtBearer | 8.0.7 | JWT bearer token authentication |
+| JWT Bearer (`Microsoft.AspNetCore.Authentication.JwtBearer`) | 8.0.7 | Token authentication |
 | StackExchange.Redis | 2.8.16 | Shopping-basket cache |
 | AutoMapper | 13.0.1 | Object mapping |
 | MailKit / MimeKit | 4.17.0 | SMTP email sending |
-| Stripe.net | 52.3.0 | Stripe PaymentIntents & webhooks |
-| Swashbuckle.AspNetCore | 6.6.2 | Swagger / OpenAPI (development) |
+| Stripe.net | 52.3.0 | PaymentIntents & webhooks |
+| Swashbuckle.AspNetCore | 6.6.2 | Swagger / OpenAPI (development only) |
 
 ---
 
 ## Authentication & Authorization
 
 **Identity setup**
-
-- `AddIdentity<AppUser, IdentityRole>()` with `AddEntityFrameworkStores<AppDbContext>()` and default token providers.
+- `AddIdentity<AppUser, IdentityRole>()` with `AddEntityFrameworkStores<AppDbContext>()` and default
+  token providers.
 - `AppUser : IdentityUser` adds `DisplayName` and a one-to-one `Address`.
-- Password policy: min length 8, requires a digit and a lowercase letter.
-- **Email confirmation is enforced at login** — unconfirmed users are blocked and re-sent an activation link.
-- **Account lockout** is enabled via `CheckPasswordSignInAsync(user, password, lockoutOnFailure: true)`.
+- Password policy: minimum length 8, requires a digit and a lowercase letter (uppercase and special
+  characters not required).
+- **Email confirmation is enforced at login** — unconfirmed users are blocked and automatically
+  re-sent an activation link.
+- **Account lockout** is enabled on repeated failed sign-in attempts
+  (`CheckPasswordSignInAsync(..., lockoutOnFailure: true)`).
 
 **JWT**
-
-- Tokens are generated by `GenerateToken` with claims for `NameIdentifier` (user id), `Email`, and `Name` (username).
-- Signed with `HmacSha256` using `Token:Secret`, issuer `Token:Issuer`, expiry **60 minutes**, no audience validation.
-- The token is written to an **HttpOnly cookie named `token`** (Secure, SameSite=None) at login.
-- JwtBearer's `OnMessageReceived` reads the token from that cookie, so the browser is authenticated automatically.
-- `[Authorize]` protects order, payment, and account ("get-user-name") endpoints.
+- Generated with claims for `NameIdentifier` (user id), `Email`, and `Name` (username).
+- Signed with `HmacSha256` using `Token:Secret`; issuer is `Token:Issuer`; expires in **60 minutes**;
+  audience validation is disabled.
+- Delivered as an **HttpOnly cookie named `token`** (`Secure`, `SameSite=None`) on login.
+- The JWT bearer handler's `OnMessageReceived` reads the token from that cookie, so an authenticated
+  browser session "just works" without manually attaching an `Authorization` header.
+- `[Authorize]` protects the Order and Payments controllers, and the account "get-user-name" endpoint.
 
 **Flows**
+- **Register** → uniqueness checks on username/email → create user → email a confirmation token →
+  confirm via `Active-Account`.
+- **Login** → look up by email → require confirmed email → check password (with lockout) → issue JWT
+  cookie.
+- **Forgot / Reset password** → email a password-reset token → reset via `Reset-password`.
+- **Logout** → deletes the `token` cookie.
 
-- **Register** → duplicate user/email checks → create user → send email-confirmation token → activate via `Active-Account`.
-- **Login** → find by email → confirm email → check password/lockout → return JWT (cookie).
-- **Forget / Reset password** → email a password-reset token (`ResetPasswordAsync`).
-- **Logout** → delete the `token` cookie.
-
-Activation and reset emails link to an external front-end at `http://localhost:4200/Account/...` (with a URL-encoded token), which is expected to invoke the corresponding account endpoints.
+Activation and password-reset emails link out to an external frontend
+(`http://localhost:4200/Account/...`) with a URL-encoded token, which is expected to call the
+corresponding API endpoints.
 
 ---
 
 ## Database
 
-**Technology:** SQL Server with **EF Core 8** (code-first, migrations).
-
-`AppDbContext : IdentityDbContext<AppUser>` registers the following DbSets:
+SQL Server via **EF Core 8**, code-first with migrations. `AppDbContext : IdentityDbContext<AppUser>`
+exposes:
 
 | DbSet | Entity |
 |---|---|
@@ -163,159 +178,167 @@ Activation and reset emails link to an external front-end at `http://localhost:4
 | `DeliveryMethods` | `DeliveryMethod` |
 | `Ratings` | `Rating` |
 
-The standard Identity tables (`AspNetUsers`, `AspNetRoles`, `AspNetRoleClaims`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserRoles`, `AspNetUserTokens`) are also created by the `IdentityDbContext` base.
+The standard Identity tables (`AspNetUsers`, `AspNetRoles`, etc.) are added automatically by
+`IdentityDbContext`.
 
 **Key relationships**
 
-| Relationship | Foreign Key | Delete behavior |
+| Relationship | Foreign key | Delete behavior |
 |---|---|---|
-| `Category` 1 — N `Product` | `Product.CategoryId` | Cascade |
-| `Product` 1 — N `Photo` | `Photo.ProductId` | Cascade |
-| `AppUser` 1 — 1 `Address` | `Address.AppUserId` (unique) | Cascade |
-| `AppUser` N — 1 `Rating` | `Rating.AppUserId` | Cascade |
-| `Product` N — 1 `Rating` | `Rating.ProductId` | Cascade |
-| `Order` N — 1 `DeliveryMethod` | `Order.DeliveryMethodId` | Restrict |
-| `Order` 1 — N `OrderItem` | `OrderItem.OrderId` | Cascade |
-| `Order` 1 — 1 `ShippingAddress` (owned) | stored in `Orders` | Owned |
+| `Category` 1 — N `Product` | `Product.CategoryId` | Default (Cascade) |
+| `Product` 1 — N `Photo` | `Photo.ProductId` | Default (Cascade) |
+| `AppUser` 1 — 1 `Address` | `Address.AppUserId` (unique index) | Cascade |
+| `AppUser` N — 1 `Rating` | `Rating.AppUserId` | Default (Cascade) |
+| `Product` N — 1 `Rating` | `Rating.ProductId` | Default (Cascade) |
+| `Order` N — 1 `DeliveryMethod` | `Order.DeliveryMethodId` | **Restrict** (a delivery method used by an order can't be deleted) |
+| `Order` 1 — N `OrderItem` | `OrderItem.OrderId` | **Cascade** |
+| `Order` 1 — 1 `ShippingAddress` | Owned entity, stored as columns on `Orders` | — |
 
 **Notes**
+- `ShippingAddress` is an **owned entity** (`OwnsOne`) — a frozen snapshot of the address at order
+  time, stored directly in the `Orders` table rather than a separate table.
+- `Order.Status` (`enum Status { Pending, PaymentReceived, PaymentFaild }`) is persisted as a
+  **string** via an EF Core value converter.
+- Money columns (`Product.NewPrice`/`OldPrice`, `Order.SubTotal`, `OrderItem.Price`,
+  `DeliveryMethod.Price`) are all `decimal(18,2)`.
+- Indexes: unique `DeliveryMethods.Name`, `Orders.BuyerEmail`, composite `Orders(BuyerEmail,
+  OrderDate)`, unique `Addresses.AppUserId`.
+- Seed data (via Fluent API `HasData`, applied through migrations): a placeholder test `Category` and
+  `Product`, plus two delivery methods (`DHL`, `XXX`).
 
-- `ShippingAddress` is an **owned entity** (`OwnsOne`) stored as columns in the `Orders` table — a snapshot of the address at order time.
-- `Order.Status` (enum `Status { Pending, PaymentReceived, PaymentFaild }`) is persisted as a **string** via a value converter.
-- Money columns (`Product.NewPrice`, `Product.OldPrice`, `Order.SubTotal`, `OrderItem.Price`, `DeliveryMethod.Price`) are `decimal(18,2)`.
-- Indexes: unique `DeliveryMethods.Name`, `Orders.BuyerEmail`, composite `Orders(BuyerEmail, OrderDate)`, unique `Addresses.AppUserId`.
-- Seeded data: a test `Category` and `Product` via Fluent API `HasData`; two delivery methods (`DHL`, `XXX`) seeded by the `DeliverySeed` migration.
-
-**Migrations (11)**
+**Migrations**
 
 ```
-20260725115212_init                 Categories, Products, Photos
-20260726051717_SeedDate             Test seed rows
-20260727151001_SomeUpdates          Category.Description nullable, max 500
-20260729135121_OldPriceAdded        Price → OldPrice + NewPrice
-20260730103729_ProductUpdate        Empty migration
-20260801192821_Add_Identity_Tables  Identity tables + Addresses
-20260808222239_AddOrderEntity       DeliveryMethods, Orders, OrderItems
-20260810160312_DeliverySeed         Seed delivery methods
-20260810221836_RemoveShippingAddressId  ShippingAddress clean-up
-20260811021709_AddingPaymentInit    Order.PaymentIntentId
-20260811161435_AddRating            Rating table
+init                          Categories, Products, Photos tables
+SeedDate                      Placeholder seed rows
+SomeUpdates                   Category.Description made nullable
+OldPriceAdded                 Price column split into OldPrice + NewPrice
+ProductUpdate                 (empty / no-op migration)
+Add_Identity_Tables           Identity tables + Addresses
+AddOrderEntity                DeliveryMethods, Orders, OrderItems
+DeliverySeed                  Seed delivery methods (DHL, XXX)
+RemoveShippingAddressId       ShippingAddress ownership clean-up
+AddingPaymentInit             Order.PaymentIntentId added
+AddRating                     Ratings table
 ```
 
 ---
 
 ## Redis / Basket
 
-- **StackExchange.Redis** is registered as a singleton (`ConnectionMultiplexer`).
-- `CustomerBasket` and `BasketItem` are plain POCOs stored in Redis as JSON via `System.Text.Json`.
-- **Key** = client-supplied basket `Id`; **TTL** = 3 days from last update.
-- `CustomerBasketRepository.UpdateBasketAsync` validates every item against SQL Server:
-  1. Loads the referenced products (with photos + category) from the database.
-  2. If any requested product does not exist, the basket is rejected (`400`).
-  3. Item fields (`ProductId`, `Name`, `Price` = `NewPrice`, `Description`, `CategoryName`, `Image` = first photo) are overwritten with fresh database values — the client can never dictate price or name.
-  4. The refreshed basket is saved back to Redis.
-- The basket also carries Stripe `PaymentIntentId` / `ClientSecret` for checkout.
+- `StackExchange.Redis` is registered as a singleton `IConnectionMultiplexer`.
+- `CustomerBasket` / `BasketItem` are plain POCOs, serialized to/from Redis as JSON.
+- **Key** = client-supplied basket id; **TTL** = 3 days from the last update.
+- `UpdateBasketAsync` re-validates every item against SQL Server on save:
+  1. Loads the referenced products (with photos & category).
+  2. If any requested product no longer exists, the update is rejected.
+  3. Each item's `Name`, `Price` (from `Product.NewPrice`), `Description`, `CategoryName`, and `Image`
+     (first photo) are overwritten from the database — never trusted from the client.
+  4. The refreshed basket is written back to Redis with a renewed 3-day TTL.
+- The basket also carries `PaymentIntentId` / `ClientSecret` once a Stripe PaymentIntent has been
+  created for it.
 
 ---
 
-## Payment
+## Payments (Stripe)
 
-Stripe is integrated via **PaymentIntents**:
-
-- **Create / update intent** — `POST api/Payments?basketId=...&deliveryMethodId=...` computes the amount from the basket line items plus the selected delivery method's price, and either creates or updates the Stripe PaymentIntent. The `PaymentIntentId` / `ClientSecret` are stored on the basket (Redis) and on the resulting `Order`.
-- **Webhook** — `POST api/Payments/webhook` verifies the Stripe signature and handles:
-  - `payment_intent.succeeded` → order status set to `PaymentReceived`.
-  - `payment_intent.payment_failed` → order status set to `PaymentFaild`.
-- `Order.Status` reflects the lifecycle: `Pending → PaymentReceived` (success) or `PaymentFaild` (failure).
-- When an order already exists for a basket's `PaymentIntentId`, it is removed and recreated with the same payment intent.
-- The Stripe API secret key is read from configuration (`Stripe:SecretKey`).
+- **`POST /api/Payments?basketId=...&deliveryMethodId=...`** *(authorized)* — computes the amount from
+  the basket's line items plus the selected delivery method's price, then creates a new Stripe
+  PaymentIntent or updates the existing one for that basket. The resulting `PaymentIntentId` /
+  `ClientSecret` are stored on the basket, and later copied onto the `Order` at checkout.
+- **`POST /api/Payments/webhook`** — verifies the Stripe signature and handles two event types:
+  - `payment_intent.succeeded` → matching order (by `PaymentIntentId`) set to `PaymentReceived`.
+  - `payment_intent.payment_failed` → matching order set to `PaymentFaild`.
+  - Any other event type is logged and ignored.
+- If a new order is created for a basket whose `PaymentIntentId` already has an existing order, the
+  old order is removed and replaced — avoiding duplicate orders from repeated checkout attempts on
+  the same basket.
 
 ---
 
 ## API Endpoints
 
-Route convention: `api/[controller]`.
+All routes are prefixed `api/[controller]` (controller name, singular where the class name is
+singular).
 
 ### Account — `api/Account`
 
 | Method | Route | Auth | Purpose |
 |---|---|---|---|
-| POST | `api/Account/Register` | — | Register a new user; sends activation email |
-| POST | `api/Account/Login` | — | Login; sets the JWT HttpOnly cookie |
-| POST | `api/Account/Active-Account` | — | Confirm email with token |
-| POST | `api/Account/Send-email-forget-password?email=` | — | Send password-reset email |
-| POST | `api/Account/Reset-password` | — | Reset password with token |
-| POST | `api/Account/Logout` | — | Delete the auth cookie |
-| GET | `api/Account/Get-user-name` | Authorize | Return current user name |
-| GET | `api/Account/IsUserAuth` | — | `200` if authenticated, otherwise `400` |
+| POST | `Register` | — | Register a new user; sends an activation email |
+| POST | `Login` | — | Authenticate; sets the JWT HttpOnly cookie |
+| POST | `Active-Account` | — | Confirm email via token |
+| POST | `Send-email-forget-password?email=` | — | Send a password-reset email |
+| POST | `Reset-password` | — | Reset password using the emailed token |
+| POST | `Logout` | — | Clear the auth cookie |
+| GET | `Get-user-name` | ✅ | Return the current user's name |
+| GET | `IsUserAuth` | — | `200` if authenticated, `400` otherwise |
 
 ### Products — `api/Product`
 
 | Method | Route | Purpose |
 |---|---|---|
-| GET | `api/Product?sort=&categoryId=&search=&pageNumber=&pageSize=` | Paginated list with search / filter / sort |
-| GET | `api/Product/{Id}` | Single product (with photos + category) |
-| POST | `api/Product` | Create product (multipart, with photos) |
-| PUT | `api/Product/{Id}` | Partial update (optional photo replacement) |
-| DELETE | `api/Product/{Id}` | Delete product + photo files |
+| GET | `?search=&categoryId=&sort=&pageNumber=&pageSize=` | Paginated, searchable, filterable, sortable listing |
+| GET | `{Id}` | Single product with photos and category |
+| POST | `` | Create a product (multipart form, with photos) |
+| PUT | `{Id}` | Partial update (any field, optional photo replacement) |
+| DELETE | `{Id}` | Delete a product and its photo files |
 
 ### Categories — `api/Category`
 
 | Method | Route | Purpose |
 |---|---|---|
-| GET | `api/Category/get-all` | List categories |
-| GET | `api/Category/Get-By-Id/{Id}` | Single category |
-| POST | `api/Category/Add-Category` | Create category |
-| PUT | `api/Category/Update-Category?Id=` | Update category (body `CategoryDto`, Id must match) |
-| DELETE | `api/Category/Delete-Category/{Id}` | Delete category |
+| GET | `get-all` | List all categories |
+| GET | `Get-By-Id/{Id}` | Single category |
+| POST | `Add-Category` | Create a category |
+| PUT | `Update-Category?Id=` | Update a category (body must match the `Id`) |
+| DELETE | `Delete-Category/{Id}` | Delete a category |
 
 ### Basket — `api/Basket`
 
 | Method | Route | Purpose |
 |---|---|---|
-| GET | `api/Basket/{Id}` | Get basket (or empty basket if none) |
-| PUT | `api/Basket` | Validate + refresh + save basket in Redis |
-| DELETE | `api/Basket/{Id}` | Delete basket |
+| GET | `{Id}` | Get a basket (or an empty one if none exists yet) |
+| PUT | `` | Validate, refresh from DB, and persist the basket |
+| DELETE | `{Id}` | Delete a basket |
 
-### Orders — `api/Order` *(Authorize)*
-
-| Method | Route | Purpose |
-|---|---|---|
-| POST | `api/Order/Create-order` | Create an order from a basket |
-| GET | `api/Order/Get-Orders-for-User` | Orders for the current user |
-| GET | `api/Order/Get-order-by-id/{id}` | A single order by id (scoped to the user) |
-| GET | `api/Order/Get-delivery` | Available delivery methods |
-
-### Payments — `api/Payments` *(Authorize)*
+### Orders — `api/Order` *(all endpoints require auth)*
 
 | Method | Route | Purpose |
 |---|---|---|
-| POST | `api/Payments?basketId=&deliveryMethodId=` | Create or update the Stripe PaymentIntent |
-| POST | `api/Payments/webhook` | Stripe webhook — update order status on payment events |
+| POST | `Create-order` | Create an order from a basket |
+| GET | `Get-Orders-for-User` | List the current user's orders, most recent first |
+| GET | `Get-order-by-id/{id}` | A single order, scoped to the current user |
+| GET | `Get-delivery` | Available delivery methods |
+
+### Payments — `api/Payments` *(create endpoint requires auth)*
+
+| Method | Route | Purpose |
+|---|---|---|
+| POST | `?basketId=&deliveryMethodId=` | Create/update the Stripe PaymentIntent for a basket |
+| POST | `webhook` | Stripe → server webhook for payment status updates |
 
 ### Ratings — `api/Ratings`
 
 | Method | Route | Purpose |
 |---|---|---|
-| GET | `api/Ratings/get-rating/{productId}` | Ratings for a product |
-| POST | `api/Ratings/add-rating` | Add a rating (stars + optional comment) |
+| GET | `get-rating/{productId}` | All ratings for a product |
+| POST | `add-rating` | Submit a rating (stars 1–5 + optional comment) for the current user |
 
 ### Diagnostics
 
-| Method | Route | Controller | Purpose |
-|---|---|---|---|
-| GET | `api/Bug/not-found` | BugController | Forced 404 |
-| GET | `api/Bug/server-error` | BugController | Forced 500 |
-| GET | `api/Bug/bad-request/{Id}` | BugController | Debug |
-| GET | `api/Bug/bad-request/` | BugController | Forced 400 |
-| GET | `errors/{statusCode}` | ErrorController | Status-code page re-execute handler |
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `api/Bug/not-found` | Forces a 404, for testing the error pipeline |
+| GET | `api/Bug/server-error` | Forces a 500 |
+| GET | `api/Bug/bad-request/{Id}` / `api/Bug/bad-request/` | Debug/test endpoints |
+| GET | `errors/{statusCode}` | Status-code re-execute handler behind `UseStatusCodePagesWithReExecute` |
 
 ---
 
 ## Example Requests
 
-**Register a user**
-
+**Register**
 ```
 POST api/Account/Register
 {
@@ -327,7 +350,6 @@ POST api/Account/Register
 ```
 
 **Login** (sets the `token` HttpOnly cookie)
-
 ```
 POST api/Account/Login
 {
@@ -336,14 +358,12 @@ POST api/Account/Login
 }
 ```
 
-**List products** (page 1, page size 6, sorted by price descending)
-
+**Browse products** (page 1, 6 per page, price descending)
 ```
 GET api/Product?pageNumber=1&pageSize=6&sort=PriceDce
 ```
 
 **Update a basket** (server refreshes item data from the database)
-
 ```
 PUT api/Basket
 {
@@ -354,8 +374,7 @@ PUT api/Basket
 }
 ```
 
-**Create an order** *(requires auth cookie)*
-
+**Create an order** *(requires the auth cookie)*
 ```
 POST api/Order/Create-order
 {
@@ -372,14 +391,12 @@ POST api/Order/Create-order
 }
 ```
 
-**Create a Stripe PaymentIntent** *(requires auth cookie)*
-
+**Create a Stripe PaymentIntent** *(requires the auth cookie)*
 ```
 POST api/Payments?basketId=some-client-guid&deliveryMethodId=1
 ```
 
 **Add a rating**
-
 ```
 POST api/Ratings/add-rating
 {
@@ -396,122 +413,116 @@ POST api/Ratings/add-rating
 ```
 Solution1/
 ├─ Solution1.sln
-├─ Ecom.API/                       # Presentation layer
+├─ Ecom.API/                        # Presentation layer
 │  ├─ Controllers/
-│  │  ├─ AccountController.cs
-│  │  ├─ BaseController.cs
-│  │  ├─ BasketController.cs
-│  │  ├─ BugController.cs
-│  │  ├─ CategoryController.cs
-│  │  ├─ ErrorController.cs
-│  │  ├─ OrderController.cs
-│  │  ├─ PaymentsController.cs
-│  │  ├─ ProductController.cs
-│  │  └─ RatingController.cs
 │  ├─ Extensions/MiddlewareExtensions.cs
-│  ├─ Helper/                      # ResponseAPI, ApiExceptions, Pagination
-│  ├─ Mapping/                     # AutoMapper profiles (Product, Category, Order, ShippingAddress)
-│  ├─ Middleware/ExceptionMiddleware.cs   # exception handling + rate limiting + security headers
-│  ├─ wwwroot/Images/              # uploaded product photos
+│  ├─ Helper/                       # ResponseAPI, ApiExceptions, Pagination
+│  ├─ Mapping/                      # AutoMapper profiles
+│  ├─ Middleware/ExceptionMiddleware.cs   # exceptions + rate limiting + security headers
+│  ├─ wwwroot/Images/                # uploaded product photos
 │  ├─ Program.cs
-│  ├─ appsettings.json
-│  └─ Properties/launchSettings.json
-├─ Ecom.infrastructure/            # Infrastructure / data access
+│  └─ appsettings.json
+├─ Ecom.infrastructure/             # Infrastructure / data access
 │  ├─ Data/
 │  │  ├─ AppDbContext.cs
-│  │  ├─ Config/                   # Fluent API configurations
-│  │  ├─ Migrations/               # 11 EF Core migrations + snapshot
-│  │  └─ Seed/ProductSeed.cs
-│  ├─ Repositires/                 # GenericRepository, Product, Category, CustomerBasket, Auth, Rating, UnitOfWork
-│  ├─ Repositires/Service/         # EmailService, GenerateToken, ImageManagementService, OrderService, PaymentService
-│  └─ infrastructureRegisteration.cs  # DI registration
-└─ Ecom.Core/                      # Domain layer
-   ├─ Entities/                    # BaseEntity, AppUser, Address, CustomerBasket, BasketItem
-   │  ├─ Product/                  # Category, Product, Photo, Rating
-   │  └─ Order/                    # Order, OrderItem, DeliveryMethod, ShippingAddress, Status
-   ├─ DTO/                         # Register/Login/Product/Category/Order/Rating/Email DTOs
-   ├─ interfaces/                  # Repository, UnitOfWork, Auth contracts
-   ├─ Services/                    # Service interfaces
-   └─ Sharing/                     # AuthResult, OrderResult, ProductParams, EmailStringBody
+│  │  ├─ Config/                    # EF Core Fluent API configurations
+│  │  ├─ Migrations/
+│  │  └─ Seed/ProductSeed.cs        # optional manual seeding helper (not wired into startup)
+│  ├─ Repositires/                  # Repository + Unit of Work implementations
+│  ├─ Repositires/Service/          # Email, JWT, image storage, orders, Stripe
+│  └─ infrastructureRegisteration.cs   # DI registration
+└─ Ecom.Core/                       # Domain layer
+   ├─ Entities/
+   │  ├─ Product/                   # Category, Product, Photo, Rating
+   │  └─ Order/                     # Order, OrderItem, DeliveryMethod, ShippingAddress, Status
+   ├─ DTO/
+   ├─ interfaces/                   # Repository, UnitOfWork, Auth contracts
+   ├─ Services/                     # Service interfaces
+   └─ Sharing/                      # AuthResult, OrderResult, ProductParams, EmailStringBody
 ```
 
 ---
 
-## Setup & Installation
+## Getting Started
 
-**Prerequisites**
+### Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - SQL Server (the default connection string targets a local `SQLEXPRESS` instance)
-- Redis server (default `localhost:6379`)
-- A [Stripe](https://stripe.com) account for payments and a MailKit-compatible SMTP account for email
+- Redis (locally, or via Docker: `docker run -d -p 6379:6379 redis`)
+- A [Stripe](https://dashboard.stripe.com/register) account (test-mode keys are enough)
 
-**Clone**
+### 1. Clone & restore
 
 ```bash
-git clone <repository-url>
+git clone <your-repo-url>
 cd Solution1
+dotnet restore
 ```
 
-**Restore packages**
+### 2. Configure secrets
 
-```bash
-dotnet restore Solution1.sln
-```
+Add the required values (see [Configuration & Secrets](#configuration--secrets)) to
+`Ecom.API/appsettings.json`, or — preferably — via `dotnet user-secrets`.
 
-**Configure secrets** — add the required values to `Ecom.API/appsettings.json` (or better, use user-secrets / environment variables). See [Configuration / Secrets](#configuration--secrets).
-
-**Apply database migrations**
+### 3. Apply EF Core migrations
 
 ```bash
 dotnet ef database update --project Ecom.infrastructure --startup-project Ecom.API
 ```
 
-This creates the database, all domain and Identity tables, and seeds the test category/product and delivery methods.
+This creates the database, all domain and Identity tables, and applies the seed data (test
+category/product, delivery methods).
 
-**Run**
+### 4. Run
 
 ```bash
 dotnet run --project Ecom.API
 ```
 
-The API listens on `http://localhost:5249` / `https://localhost:7198` and exposes Swagger at `/swagger`.
+The API listens on `http://localhost:5249` / `https://localhost:7198` (per `launchSettings.json`) and
+exposes Swagger at `/swagger` in the `Development` environment.
 
----
+### 5. Test Stripe webhooks locally
 
-## Configuration / Secrets
-
-All configuration values below are **required** by the application. Never commit real secrets — provide them via environment variables, user-secrets, or your secrets manager.
-
-| Key | Description | Placeholder |
-|---|---|---|
-| `ConnectionStrings:EcomDatabase` | SQL Server connection string | `Server=YOUR_SQL_SERVER;Database=YOUR_DATABASE;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true` |
-| `ConnectionStrings:redis` | Redis endpoint | `YOUR_REDIS_ENDPOINT` (e.g. `localhost`) |
-| `EmailSetting:From` | From email address shown on sent emails | `YOUR_FROM_EMAIL` |
-| `EmailSetting:Smtp` | SMTP host | `YOUR_SMTP_HOST` |
-| `EmailSetting:Port` | SMTP port (SSL) | `YOUR_SMTP_PORT` |
-| `EmailSetting:Username` | SMTP username | `YOUR_SMTP_USERNAME` |
-| `EmailSetting:Password` | SMTP password / app password | `YOUR_SMTP_PASSWORD` |
-| `Token:Secret` | Symmetric signing key for JWT | `YOUR_JWT_SECRET` |
-| `Token:Issuer` | JWT issuer | `YOUR_JWT_ISSUER` |
-| `CookieSettings:Domain` | Domain for the auth cookie | `localhost` (or your domain) |
-| `Stripe:SecretKey` | Stripe secret API key (read by `PaymentService`) | `YOUR_STRIPE_SECRET_KEY` |
-
-The Stripe **webhook signing secret** used to validate webhook signatures is set in `PaymentsController` — replace it with your own `whsec_...` value from the Stripe dashboard / CLI.
-
----
-
-## Running the Project
+Use the [Stripe CLI](https://stripe.com/docs/stripe-cli) to forward events to your local API:
 
 ```bash
-# Build the whole solution
-dotnet build Solution1.sln
-
-# Apply migrations to create/update the database
-dotnet ef database update --project Ecom.infrastructure --startup-project Ecom.API
-
-# Run the API
-dotnet run --project Ecom.API
+stripe listen --forward-to https://localhost:7198/api/payments/webhook
 ```
 
-Open `https://localhost:7198/swagger` (or `http://localhost:5249/swagger`) in development to explore and test the endpoints. Use the **Account → Register / Login** endpoints first, then the authenticated order and payment endpoints.
+Copy the signing secret it prints and update the webhook secret used in `PaymentsController` (see
+below).
+
+---
+
+## Configuration & Secrets
+
+`appsettings.json` should **never** contain real secrets in a committed repo. Prefer environment
+variables or `dotnet user-secrets` locally:
+
+```bash
+cd Ecom.API
+dotnet user-secrets init
+dotnet user-secrets set "Token:Secret" "a-long-random-secret-at-least-32-characters"
+dotnet user-secrets set "Stripe:SecretKey" "sk_test_..."
+dotnet user-secrets set "EmailSetting:Password" "your-app-password"
+```
+
+| Key | Purpose |
+|---|---|
+| `ConnectionStrings:EcomDatabase` | SQL Server connection string |
+| `ConnectionStrings:redis` | Redis endpoint (e.g. `localhost`) |
+| `EmailSetting:From` / `Smtp` / `Port` / `Username` / `Password` | SMTP settings for MailKit |
+| `Token:Secret` | Symmetric signing key for JWT |
+| `Token:Issuer` | JWT issuer |
+| `CookieSettings:Domain` | Domain for the auth cookie |
+| `Stripe:SecretKey` | Stripe secret API key, read by `PaymentService` |
+
+One thing to change before publishing this repo: the Stripe **webhook signing secret** is currently a
+hardcoded `const string` inside `PaymentsController` rather than read from configuration — move it
+into `appsettings`/user-secrets (e.g. `Stripe:WebhookSecret`) and read it via `IConfiguration`, the
+same way `Stripe:SecretKey` is handled in `PaymentService`.
+
+For deployment, use environment variables or a secret manager (Azure Key Vault, AWS Secrets Manager,
+etc.) rather than editing `appsettings.json` directly.
