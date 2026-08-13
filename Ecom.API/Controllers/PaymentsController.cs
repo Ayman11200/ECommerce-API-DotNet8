@@ -39,18 +39,17 @@ namespace Ecom.API.Controllers
                     Request.Headers["Stripe-Signature"], endpointSecret, throwOnApiVersionMismatch: false);
                 PaymentIntent intent;
                 Order orders;
-                // Handle the event
+           
                 if (stripeEvent.Type == EventTypes.PaymentIntentPaymentFailed)
                 {
                     intent = stripeEvent.Data.Object as PaymentIntent;
-                    orders = await paymentService.UpdateOrderSuccess(intent.Id);
+                    orders = await paymentService.UpdateOrderFaild(intent.Id);
                 }
                 else if (stripeEvent.Type == EventTypes.PaymentIntentSucceeded)
                 {
                     intent = stripeEvent.Data.Object as PaymentIntent;
                     orders = await paymentService.UpdateOrderSuccess(intent.Id);
                 }
-                // ... handle other event types
                 else
                 {
                     Console.WriteLine("Unhandled event type: {0}", stripeEvent.Type);

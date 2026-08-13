@@ -32,6 +32,8 @@ namespace Ecom.infrastructure.Data
 
         public virtual DbSet<DeliveryMethod> DeliveryMethods { get; set; }
 
+        public virtual DbSet<Rating> Ratings { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

@@ -27,5 +27,7 @@ namespace Ecom.Core.Entities.Product
         public virtual Category Category { get; set; }
         public virtual List<Photo> Photos { get; set; }
 
+        public double Rating { get; set; }
+
     }
 }

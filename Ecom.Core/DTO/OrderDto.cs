@@ -34,11 +34,8 @@ namespace Ecom.Core.DTO
         public string BuyerEmail { get; set; }
         public decimal SubTotal { get; set; }
         public ShippingAddress shippingAddress { get; set; }
-
-
         public decimal Total { get; set; }
         public DateTime OrderDate { get; set; }
-
         public IReadOnlyList<OrderItemDTO> orderItems { get; set; }
         public string deliveryMethod { get; set; }
         public string status { get; set; }

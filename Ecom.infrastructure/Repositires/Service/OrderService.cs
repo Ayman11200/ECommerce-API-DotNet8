@@ -2,6 +2,7 @@
 using Ecom.Core;
 using Ecom.Core.DTO;
 using Ecom.Core.Entities.Order;
+using Ecom.Core.Entities.Product;
 using Ecom.Core.interfaces;
 using Ecom.Core.Services;
 using Ecom.Core.Sharing;
@@ -131,10 +132,16 @@ namespace Ecom.infrastructure.Repositires.Service
             var result = mapper.Map<OrderToReturnDTO>(order);
 
             return result;
+
         }
 
         public async Task<IReadOnlyCollection<DeliveryMethod>> GetDeliveryMethodsAsync()
             => await context.DeliveryMethods.AsNoTracking().ToListAsync();
+
+
+
+
+
 
     }
 }

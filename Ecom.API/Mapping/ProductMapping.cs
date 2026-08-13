@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Ecom.Core.Dto;
+using Ecom.Core.DTO;
 using Ecom.Core.Entities.Product;
 
 namespace Ecom.API.Mapping
@@ -23,11 +24,16 @@ namespace Ecom.API.Mapping
                     opt => opt.Ignore());
 
 
-    //        CreateMap<UpdateProductDto, Product>()
-    //.ForMember(x => x.Photos, op => op.Ignore())
-    //.ForAllMembers(opt =>
-    //    opt.Condition((src, dest, srcMember, destMember, context)
-    //        => srcMember != null));
+            //        CreateMap<UpdateProductDto, Product>()
+            //.ForMember(x => x.Photos, op => op.Ignore())
+            //.ForAllMembers(opt =>
+            //    opt.Condition((src, dest, srcMember, destMember, context)
+            //        => srcMember != null));
+
+
+            CreateMap<Rating, RatingToReturnDto>()
+                .ForMember(x => x.UserName,
+                op => op.MapFrom(src => src.AppUser.DisplayName));
 
 
             
