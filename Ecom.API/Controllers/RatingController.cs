@@ -32,8 +32,8 @@ namespace Ecom.API.Controllers
         [HttpPost("add-rating")]
         public async Task<IActionResult> add(AddRatingDto ratings)
         {
-            var email = User.FindFirst(ClaimTypes.Email)?.Value;
-            var result = await rating.AddRatingAsync(ratings, email);
+           var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await rating.AddRatingAsync(ratings, userId);
             return result ? Ok() : BadRequest();
         }
     }

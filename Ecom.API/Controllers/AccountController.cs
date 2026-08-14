@@ -1,10 +1,13 @@
 ﻿using AutoMapper;
 using Ecom.API.Helper;
 using Ecom.Core.Dto;
+using Ecom.Core.DTO;
+using Ecom.Core.Entities;
 using Ecom.Core.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 
 namespace Ecom.API.Controllers
@@ -103,6 +106,27 @@ namespace Ecom.API.Controllers
         public async Task<IActionResult> IsUserAuth()
         {
             return User.Identity.IsAuthenticated ? Ok() : BadRequest();
+        }
+
+
+
+
+        [Authorize]
+        [HttpPut("update-address")]
+        public async Task<IActionResult> updateAddress(ShippingAddressDto addressDTO)
+        {
+            var email = User.FindFirst(ClaimTypes.Email)?.Value;
+            var address = mapper.Map<Address>(addressDTO);
+            var result = await work.Auth.UpdateAddress(email,address);
+            return result ? Ok() : BadRequest();
+        }
+
+        [HttpGet("get-address-for-user")]
+        public async Task<IActionResult> getAddress()
+        {
+            var address = await work.Auth.getUserAddress(User.FindFirst(ClaimTypes.Email).Value);
+            var result = mapper.Map<ShippingAddressDto>(address);
+            return Ok(result);
         }
 
 

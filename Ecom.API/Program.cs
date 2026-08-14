@@ -16,6 +16,17 @@ namespace Ecom.API
             // Add services to the container.
             builder.Services.AddMemoryCache();
             builder.Services.AddControllers();
+
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend", policy =>
+                    policy.WithOrigins("https://your-frontend-domain.com")
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials()); 
+            });
+
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -38,6 +49,9 @@ namespace Ecom.API
 
             app.UseHttpsRedirection();
 
+            app.UseStaticFiles();
+
+            app.UseCors("AllowFrontend");
 
             app.MapControllers();
            

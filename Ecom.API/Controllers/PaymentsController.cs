@@ -27,7 +27,7 @@ namespace Ecom.API.Controllers
         }
 
 
-        const string endpointSecret = "whsec_28cc3dec50be3eaba23c0d5217e31f075148d84948bb1e7aa84452952a3a9461";
+        const string endpointSecret = "whsec_YOUR_STRIPE_WEBHOOK_SECRET";
 
         [HttpPost("webhook")]
         public async Task<IActionResult> UpdateStatusWithStripe()
