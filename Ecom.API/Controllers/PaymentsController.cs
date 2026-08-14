@@ -10,7 +10,7 @@ namespace Ecom.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+  
     public class PaymentsController : ControllerBase
     {
         private readonly IPaymentService paymentService;
@@ -21,6 +21,7 @@ namespace Ecom.API.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<CustomerBasket>> Create(string basketId, int? deliveryMethodId)
         {
             return await paymentService.CreateOrUpdatePaymentAsync(basketId, deliveryMethodId);

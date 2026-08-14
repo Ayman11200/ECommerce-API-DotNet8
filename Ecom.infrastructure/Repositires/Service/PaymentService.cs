@@ -46,7 +46,6 @@ namespace Ecom.infrastructure.Repositires.Service
 
             }
 
-
             PaymentIntentService paymentIntentService = new();
             PaymentIntent _intent;
 

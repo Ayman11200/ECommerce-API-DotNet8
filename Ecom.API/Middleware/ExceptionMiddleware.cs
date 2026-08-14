@@ -35,6 +35,7 @@ namespace Ecom.API.Middleware
                         new ApiExceptions((int)HttpStatusCode.TooManyRequests, "Too many request. please try again later");
 
                     await context.Response.WriteAsJsonAsync(Response);
+                    return;
                 }
 
                 await _next(context);

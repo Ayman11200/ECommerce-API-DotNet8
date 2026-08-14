@@ -39,6 +39,8 @@ namespace Ecom.infrastructure
 
             services.AddScoped<IGenerateToken, GenerateToken>();
 
+            services.AddScoped<IRatingRepository, RatingReposiroty>();
+
             services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
                 var config = ConfigurationOptions.Parse(configuration.GetConnectionString("redis"));
