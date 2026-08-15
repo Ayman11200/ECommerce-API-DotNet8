@@ -32,6 +32,7 @@ namespace Ecom.infrastructure.Repositires.Service
             };
 
 
+
             var secret = configuration["Token:Secret"];
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));

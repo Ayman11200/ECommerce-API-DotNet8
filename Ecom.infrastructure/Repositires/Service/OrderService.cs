@@ -10,6 +10,7 @@ using Ecom.infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
 using Org.BouncyCastle.Crypto;
+using Stripe;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -60,7 +61,7 @@ namespace Ecom.infrastructure.Repositires.Service
 
             foreach (var item in basket.BasketItems)
             {
-               if(!products.TryGetValue(item.ProductId, out var product))
+                if (!products.TryGetValue(item.ProductId, out var product))
                     return OrderResult.Fail($"Product {item.ProductId} is no longer available.");
 
                 var orderItem = new OrderItem
@@ -71,11 +72,11 @@ namespace Ecom.infrastructure.Repositires.Service
                     MainImage = item.Image,
                     Quantity = item.Quantity
                 };
-        
+
                 orderItems.Add(orderItem);
             }
 
-            var subTotal = orderItems.Sum(oi => oi.Price*oi.Quantity);
+            var subTotal = orderItems.Sum(oi => oi.Price * oi.Quantity);
 
             var shippingAddress = mapper.Map<ShippingAddress>(orderDto.ShippingAddressDto);
 
@@ -85,13 +86,13 @@ namespace Ecom.infrastructure.Repositires.Service
 
             if (ExsistOrder is not null)
             {
-                 context.Orders.Remove(ExsistOrder);
+                context.Orders.Remove(ExsistOrder);
                 await context.SaveChangesAsync();
 
                 await paymentService.CreateOrUpdatePaymentAsync(basket.Id, deliveryMethod.Id);
             }
 
-            var order = new Order(email, subTotal, deliveryMethod, orderItems, shippingAddress,basket.PaymentIntentId);
+            var order = new Order(email, subTotal, deliveryMethod, orderItems, shippingAddress, basket.PaymentIntentId);
 
             await context.Orders.AddAsync(order);
             await context.SaveChangesAsync();
@@ -108,7 +109,7 @@ namespace Ecom.infrastructure.Repositires.Service
         {
 
             var orders = await context.Orders.Where(o => o.BuyerEmail == email)
-                .Include(o => o.OrderItems)         
+                .Include(o => o.OrderItems)
                 .Include(o => o.DeliveryMethod)
                 .AsNoTracking()
                 .OrderByDescending(o => o.OrderDate).ToListAsync();
@@ -120,7 +121,7 @@ namespace Ecom.infrastructure.Repositires.Service
         }
 
 
-        public async Task<OrderToReturnDTO> GetOrderByIdAsync(int Id , string email)
+        public async Task<OrderToReturnDTO> GetOrderByIdAsync(int Id, string email)
         {
             var order = await context.Orders
                 .Include(o => o.OrderItems)
@@ -132,6 +133,10 @@ namespace Ecom.infrastructure.Repositires.Service
             var result = mapper.Map<OrderToReturnDTO>(order);
 
             return result;
+
+
+
+     
 
         }
 

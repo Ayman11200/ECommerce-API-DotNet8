@@ -1,4 +1,5 @@
-﻿using Ecom.Core.DTO;
+﻿using Ecom.API.Extensions;
+using Ecom.Core.DTO;
 using Ecom.Core.Entities.Product;
 using Ecom.Core.interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -32,7 +33,7 @@ namespace Ecom.API.Controllers
         [HttpPost("add-rating")]
         public async Task<IActionResult> add(AddRatingDto ratings)
         {
-           var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+           var userId = User.GetUserId();
             var result = await rating.AddRatingAsync(ratings, userId);
             return result ? Ok() : BadRequest();
         }
