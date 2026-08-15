@@ -6,6 +6,7 @@ using Ecom.Core.interfaces;
 using Ecom.Core.Sharing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Ecom.API.Controllers
 {
@@ -18,9 +19,6 @@ namespace Ecom.API.Controllers
         }
 
 
-
-      
-     
 
         [HttpGet]
         [ProducesResponseType(typeof(Pagination<ProductDto>), StatusCodes.Status200OK)]
@@ -46,6 +44,7 @@ namespace Ecom.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Add(AddProductDto addProductDto)
@@ -65,6 +64,7 @@ namespace Ecom.API.Controllers
 
 
         [HttpPut("{Id}")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
@@ -83,6 +83,7 @@ namespace Ecom.API.Controllers
         }
 
         [HttpDelete("{Id}")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int Id)

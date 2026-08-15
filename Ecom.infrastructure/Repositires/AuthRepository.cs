@@ -111,7 +111,8 @@ namespace Ecom.infrastructure.Repositires
 
             if (result.Succeeded)
             {
-                return AuthResult.Ok(null, generateToken.GetAndCreateToken(foundUser));
+                var roles = await userManager.GetRolesAsync(foundUser);
+                return AuthResult.Ok(null, generateToken.GetAndCreateToken(foundUser,roles));
 
             }
 

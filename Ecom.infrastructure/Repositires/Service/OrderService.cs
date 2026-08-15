@@ -121,22 +121,15 @@ namespace Ecom.infrastructure.Repositires.Service
         }
 
 
-        public async Task<OrderToReturnDTO> GetOrderByIdAsync(int Id, string email)
+
+
+        public async Task<Order?> GetOrderEntityByIdAsync(int Id)
         {
-            var order = await context.Orders
-                .Include(o => o.OrderItems)
-                .Include(o => o.DeliveryMethod)
-                .Where(o => o.Id == Id && o.BuyerEmail == email)
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
-
-            var result = mapper.Map<OrderToReturnDTO>(order);
-
-            return result;
-
-
-
-     
+            return await context.Orders
+             .Include(o => o.OrderItems)
+             .Include(o => o.DeliveryMethod)
+             .AsNoTracking()
+             .FirstOrDefaultAsync(o => o.Id == Id);
 
         }
 

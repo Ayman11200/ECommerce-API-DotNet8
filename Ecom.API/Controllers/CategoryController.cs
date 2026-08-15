@@ -3,6 +3,7 @@ using Ecom.API.Helper;
 using Ecom.Core.Dto;
 using Ecom.Core.Entities.Product;
 using Ecom.Core.interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -50,6 +51,7 @@ namespace Ecom.API.Controllers
         }
 
         [HttpPost("Add-Category")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Add(AddCategoryDto AddCategoryDto)
@@ -69,6 +71,7 @@ namespace Ecom.API.Controllers
         }
 
         [HttpPut("Update-Category")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
@@ -92,6 +95,7 @@ namespace Ecom.API.Controllers
         }
 
         [HttpDelete("Delete-Category/{Id}")]
+        [Authorize(Roles = "Admin")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int Id)

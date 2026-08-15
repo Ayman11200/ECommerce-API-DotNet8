@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
+using Ecom.API.Extensions;
 using Ecom.API.Helper;
 using Ecom.Core.Dto;
 using Ecom.Core.Entities;
 using Ecom.Core.interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Reflection.Metadata.Ecma335;
@@ -12,20 +14,28 @@ namespace Ecom.API.Controllers
 
     public class BasketController : BaseController
     {
-        public BasketController(IUnitOfWork work, IMapper mapper) : base(work, mapper)
+        private readonly IAuthorizationService authorizationService;
+        public BasketController(IUnitOfWork work, IMapper mapper, IAuthorizationService authorizationService) : base(work, mapper)
         {
-
-
+            this.authorizationService = authorizationService;
         }
 
         [HttpGet("{Id}")]
         [ProducesResponseType(typeof(CustomerBasket), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Get(string Id)
         {
-            var result = await work.CustomerBasketRepository.GetBasketAsync(Id);
+            var basket = await work.CustomerBasketRepository.GetBasketAsync(Id);
 
-            return Ok(result ?? new CustomerBasket(Id));
+            if (basket == null)
+                return Ok(new CustomerBasket(Id));
+
+            var authResult = await authorizationService.AuthorizeAsync(User, basket, "BasketOwnerOrAdmin");
+            if (!authResult.Succeeded)
+                return Forbid();
+
+            return Ok(basket);
                 
         }
 
@@ -33,6 +43,17 @@ namespace Ecom.API.Controllers
         [ProducesResponseType(typeof(CustomerBasket), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update(CustomerBasket basket)
         {
+            var existing = await work.CustomerBasketRepository.GetBasketAsync(basket.Id);
+
+            if (existing is not null)
+            {
+                var authResult = await authorizationService.AuthorizeAsync(User, existing, "BasketOwnerOrAdmin");
+                if (!authResult.Succeeded)
+                    return Forbid();
+            }
+
+            basket.OwnerId = existing?.OwnerId ?? User.GetUserId();
+
 
             var result = await work.CustomerBasketRepository.UpdateBasketAsync(basket);
 
@@ -41,12 +62,23 @@ namespace Ecom.API.Controllers
 
 
         [HttpDelete("{Id}")]
+        [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Delete(string Id)
         {
+            var existing = await work.CustomerBasketRepository.GetBasketAsync(Id);
+            if (existing is null)
+                return NotFound(new ResponseAPI(404, $"Basket with Id = {Id} not found."));
+
+            var authResutl = await authorizationService.AuthorizeAsync(User, existing, "BasketOwnerOrAdmin");
+            if (!authResutl.Succeeded)
+                return Forbid();
+
             var deleted = await work.CustomerBasketRepository.DeleteBasketAsync(Id);
 
-            return deleted ? Ok(new ResponseAPI(200, "item deleted!")) :
-                NotFound(new ResponseAPI(404, $"Basket with Id = {Id} not found."));
+            return deleted
+                ? Ok(new ResponseAPI(200, "item deleted!"))
+                : StatusCode(500, new ResponseAPI(500, "Failed to delete basket."));
         }
 
 

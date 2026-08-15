@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using static StackExchange.Redis.Role;
 
 namespace Ecom.API.Controllers
 {
@@ -17,10 +18,14 @@ namespace Ecom.API.Controllers
     public class OrderController : ControllerBase
     {
         private readonly IOrderService orderService;
+        private readonly IAuthorizationService authorizationService;
+        private readonly IMapper mapper;
 
-        public OrderController(IOrderService orderService)
+        public OrderController(IOrderService orderService, IAuthorizationService authorizationService, IMapper mapper)
         {
             this.orderService = orderService;
+            this.authorizationService = authorizationService;
+            this.mapper = mapper;
         }
 
         [HttpPost("Create-order")]
@@ -51,15 +56,20 @@ namespace Ecom.API.Controllers
 
         [HttpGet("Get-order-by-id/{id}")]
         [ProducesResponseType(typeof(OrderToReturnDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetOrderById(int Id)
         {
-            var email = User.FindFirstValue(ClaimTypes.Email);
+            var order = await orderService.GetOrderEntityByIdAsync(Id);
 
-            var result = await orderService.GetOrderByIdAsync(Id , email);
+            if (order is null)
+                return NotFound(new ResponseAPI(404, $"Order with Id {Id} not found!"));
 
-            if(result == null) return NotFound(new ResponseAPI(404,
-                $"Order with Id {Id} not found!"));
+            var authResult = await authorizationService.AuthorizeAsync(User, order, "OrderOwnerOrAdmin");
+            if (!authResult.Succeeded)
+                return Forbid();
 
+            var result = mapper.Map<OrderToReturnDTO>(order);
             return Ok(result);
         }
 

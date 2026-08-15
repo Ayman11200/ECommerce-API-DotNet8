@@ -16,7 +16,7 @@ namespace Ecom.Core.Services
 
         Task<IReadOnlyCollection<OrderToReturnDTO>> GetAllOrdersForUserAsync(string email);
 
-        Task<OrderToReturnDTO> GetOrderByIdAsync(int Id , string email);
+        Task<Order?> GetOrderEntityByIdAsync(int Id);
 
         Task<IReadOnlyCollection<DeliveryMethod>> GetDeliveryMethodsAsync();
 

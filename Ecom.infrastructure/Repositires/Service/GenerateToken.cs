@@ -22,7 +22,7 @@ namespace Ecom.infrastructure.Repositires.Service
             this.configuration = configuration;
         }
 
-        public string GetAndCreateToken(AppUser user)
+        public string GetAndCreateToken(AppUser user, IList<string> roles)
         {
             var claims = new List<Claim>
             {
@@ -30,6 +30,11 @@ namespace Ecom.infrastructure.Repositires.Service
                 new Claim(ClaimTypes.Email, user.Email!),
                 new Claim(ClaimTypes.Name, user.UserName!),
             };
+
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
 
 
@@ -48,6 +53,7 @@ namespace Ecom.infrastructure.Repositires.Service
                 );
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
             return tokenString;
 
         }

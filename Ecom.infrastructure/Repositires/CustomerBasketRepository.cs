@@ -38,6 +38,7 @@ namespace Ecom.infrastructure.Repositires
             {
                 return JsonSerializer.Deserialize<CustomerBasket>(result);
             }
+            
             return null;
         }
 
@@ -71,5 +72,6 @@ namespace Ecom.infrastructure.Repositires
             return saved ? basket : null;
 
         }
+
     }
 }

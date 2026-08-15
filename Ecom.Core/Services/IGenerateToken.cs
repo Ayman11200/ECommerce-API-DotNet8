@@ -10,7 +10,7 @@ namespace Ecom.Core.Services
     public interface IGenerateToken
     {
 
-        public string GetAndCreateToken(AppUser user);
+        public string GetAndCreateToken(AppUser user , IList<string> roles);
 
     }
 }
