@@ -1,9 +1,11 @@
 using AutoMapper;
 using Ecom.API.Authorization;
 using Ecom.API.Extensions;
+using Ecom.Core.Entities;
 using Ecom.infrastructure;
 using Ecom.infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 
@@ -14,7 +16,7 @@ namespace Ecom.API
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-
+            
       
             builder.Services.AddMemoryCache();
             builder.Services.AddControllers();
@@ -52,10 +54,14 @@ namespace Ecom.API
 
             var app = builder.Build();
 
+
             await app.SeedRolesAsync();
             await app.SeedAdminUserAsync();
 
             app.UseCustomExceptionMiddleware();
+
+            app.UseCors("AllowFrontend");
+
             app.UseAuthentication();
             app.UseAuthorization();
 
@@ -69,9 +75,7 @@ namespace Ecom.API
 
             app.UseHttpsRedirection();
 
-            app.UseStaticFiles();
-
-            app.UseCors("AllowFrontend");
+            app.UseStaticFiles();          
 
             app.MapControllers();
            

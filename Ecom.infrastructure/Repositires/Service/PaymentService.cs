@@ -34,6 +34,19 @@ namespace Ecom.infrastructure.Repositires.Service
             if (basket == null)
                 throw new Exception("Basket not found.");
 
+            var ids = basket.BasketItems.Select(x => x.ProductId).ToList();
+            var products = await context.Products
+                .Where(p => ids.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id);
+
+            foreach (var item in basket.BasketItems)
+            {
+                if (products.TryGetValue(item.ProductId, out var product))
+                {
+                    item.Price = product.NewPrice;
+                }
+            }
+
             StripeConfiguration.ApiKey = configuration["Stripe:SecretKey"];
 
             decimal shippingPrice = 0m;
@@ -42,8 +55,10 @@ namespace Ecom.infrastructure.Repositires.Service
             {
                 var deliveryMethod = await context.DeliveryMethods.FindAsync(deliveryMethodId.Value);
 
-                shippingPrice = deliveryMethod.Price; 
+                if (deliveryMethod is null)
+                    throw new Exception($"Delivery method with Id = {deliveryMethodId} not found.");
 
+                shippingPrice = deliveryMethod.Price; 
             }
 
             PaymentIntentService paymentIntentService = new();
@@ -57,7 +72,9 @@ namespace Ecom.infrastructure.Repositires.Service
                     Currency = "USD",
                     PaymentMethodTypes = new List<string> { "card" }
                 };
+
                 _intent = await paymentIntentService.CreateAsync(option);
+
                 basket.PaymentIntentId = _intent.Id;
                 basket.ClientSecret = _intent.ClientSecret;
             }
@@ -69,6 +86,7 @@ namespace Ecom.infrastructure.Repositires.Service
                 };
                 await paymentIntentService.UpdateAsync(basket.PaymentIntentId, option); 
             }
+
             await work.CustomerBasketRepository.UpdateBasketAsync(basket);
             return basket;
 
@@ -77,26 +95,24 @@ namespace Ecom.infrastructure.Repositires.Service
         public async Task<Order> UpdateOrderFaild(string PaymentInten)
         {
             var order = await context.Orders.FirstOrDefaultAsync(m => m.PaymentIntentId == PaymentInten);
-            if (order is null)
-            {
-                return null;
-            }
+
+            if (order is null) return null;
+            
             order.Status = Status.PaymentFaild;
-            context.Orders.Update(order);
             await context.SaveChangesAsync();
+
             return order;
         }
 
         public async Task<Order> UpdateOrderSuccess(string PaymentInten)
         {
             var order = await context.Orders.FirstOrDefaultAsync(m => m.PaymentIntentId == PaymentInten);
-            if (order is null)
-            {
-                return null;
-            }
+
+            if (order is null) return null;
+
             order.Status = Status.PaymentReceived;
-            context.Orders.Update(order);
             await context.SaveChangesAsync();
+
             return order;
         }
     }

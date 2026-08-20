@@ -11,7 +11,7 @@ namespace Ecom.API.Controllers
         [HttpGet]
         public IActionResult Error(int statusCode)
         {
-            return new ObjectResult(new ResponseAPI(404));
+            return new ObjectResult(new ResponseAPI(statusCode));
         }
     }
 }

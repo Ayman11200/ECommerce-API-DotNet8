@@ -1,4 +1,5 @@
-﻿using Ecom.Core.interfaces;
+﻿using Ecom.Core.Entities;
+using Ecom.Core.interfaces;
 using Ecom.infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -10,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Ecom.infrastructure.Repositires
 {
-    public class GenericRepository<T> : IGenericRepository<T> where T : class
+    public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity<int>
     {
 
         private readonly AppDbContext _context;

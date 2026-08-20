@@ -8,15 +8,12 @@ using Ecom.Core.Services;
 using Ecom.Core.Sharing;
 using Ecom.infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Identity.Client;
-using Org.BouncyCastle.Crypto;
 using Stripe;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static StackExchange.Redis.Role;
 
 namespace Ecom.infrastructure.Repositires.Service
 {
@@ -51,13 +48,14 @@ namespace Ecom.infrastructure.Repositires.Service
             if (deliveryMethod == null)
                 return OrderResult.Fail("Selected delivery method is invalid.");
 
-            List<OrderItem> orderItems = new List<OrderItem>();
-
+         
             var ids = basket.BasketItems.Select(x => x.ProductId).ToList();
 
             var products = await context.Products
                .Where(p => ids.Contains(p.Id))
                .ToDictionaryAsync(p => p.Id);
+
+            List<OrderItem> orderItems = new List<OrderItem>();
 
             foreach (var item in basket.BasketItems)
             {
@@ -80,21 +78,18 @@ namespace Ecom.infrastructure.Repositires.Service
 
             var shippingAddress = mapper.Map<ShippingAddress>(orderDto.ShippingAddressDto);
 
-            var ExsistOrder = await context.Orders
+            var exsistOrder = await context.Orders
                 .Where(o => o.PaymentIntentId == basket.PaymentIntentId)
                 .FirstOrDefaultAsync();
 
-            if (ExsistOrder is not null)
+            if (exsistOrder is not null)
             {
-                context.Orders.Remove(ExsistOrder);
-                await context.SaveChangesAsync();
-
-                await paymentService.CreateOrUpdatePaymentAsync(basket.Id, deliveryMethod.Id);
+                context.Orders.Remove(exsistOrder);    
             }
 
             var order = new Order(email, subTotal, deliveryMethod, orderItems, shippingAddress, basket.PaymentIntentId);
-
             await context.Orders.AddAsync(order);
+
             await context.SaveChangesAsync();
             await work.CustomerBasketRepository.DeleteBasketAsync(orderDto.BasketId);
 

@@ -34,7 +34,7 @@ namespace Ecom.API.Controllers
         [HttpGet("{Id}")]
         public async Task<IActionResult> GetById(int Id)
         {
-            var product = await work.ProductRepository.GetByIdAsync(Id, x => x.Photos, x => x.Category);
+            var product = await work.ProductRepository.GetByIdAsync(Id, p => p.Photos, p => p.Category);
 
             if (product == null) return NotFound(new ResponseAPI(404, $"Not Found Product Id = {Id}"));
 

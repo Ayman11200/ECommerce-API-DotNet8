@@ -1,4 +1,5 @@
-﻿using Ecom.Core.Entities;
+﻿using Ecom.API.Helper;
+using Ecom.Core.Entities;
 using Ecom.Core.Entities.Order;
 using Ecom.Core.interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -23,8 +24,9 @@ namespace Ecom.API.Controllers
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<CustomerBasket>> Create(string basketId, int? deliveryMethodId)
-        {
-            return await paymentService.CreateOrUpdatePaymentAsync(basketId, deliveryMethodId);
+        {         
+                var basket = await paymentService.CreateOrUpdatePaymentAsync(basketId, deliveryMethodId);
+                return Ok(basket);          
         }
 
 
