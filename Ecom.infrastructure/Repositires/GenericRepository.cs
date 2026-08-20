@@ -74,7 +74,7 @@ namespace Ecom.infrastructure.Repositires
                query = query.Include(include);
             }
 
-            var entity = await query.AsNoTracking().FirstOrDefaultAsync(x => EF.Property<int>(x, "Id") == Id);
+            var entity = await query.AsNoTracking().FirstOrDefaultAsync(x => x.Id == Id);
 
             return entity;
         }

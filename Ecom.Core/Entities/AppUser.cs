@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +13,9 @@ namespace Ecom.Core.Entities
         public string DisplayName { get; set; }
 
         public Address? Address { get; set; }
+
+        public ICollection<RefreshToken> RefreshTokens { get; set; }
+          = new List<RefreshToken>();
 
     }
 }

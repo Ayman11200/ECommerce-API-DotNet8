@@ -27,7 +27,9 @@ namespace Ecom.Core.interfaces
 
         Task<Address?> getUserAddress(string email);
 
+        Task<AuthResult> RefreshTokenAsync(string refreshToken);
 
+        Task<bool> RevokeRefreshTokenAsync(string refreshToken);
 
     }
 }

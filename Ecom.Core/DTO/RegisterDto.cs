@@ -32,6 +32,8 @@ namespace Ecom.Core.Dto
         public string Token { get; set; }
     }
 
+    public record TokenResult(
+    string AccessToken,
+    string RefreshToken);
 
-  
 }

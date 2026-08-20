@@ -40,10 +40,10 @@ namespace Ecom.infrastructure.Repositires.Service
                 try
                 {
                     await smtp.ConnectAsync(
-                        configuration["EmailSetting:Smtp"],
-                       int.Parse(configuration["EmailSetting:Port"]), true);
-                    await smtp.AuthenticateAsync(configuration["EmailSetting:Username"],
-                        configuration["EmailSetting:Password"]);
+                        configuration["EmailSetting:Smtp"]!,
+                       int.Parse(configuration["EmailSetting:Port"]!), true);
+                    await smtp.AuthenticateAsync(configuration["EmailSetting:Username"]!,
+                        configuration["EmailSetting:Password"]!);
 
                     await smtp.SendAsync(message);
                 }

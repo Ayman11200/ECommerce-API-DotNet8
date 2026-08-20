@@ -16,6 +16,7 @@ namespace Ecom.Core.interfaces
 
         public IAuth Auth {  get; }
 
+
         Task<int> SaveChangesAsync();
     }
 }

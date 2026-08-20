@@ -21,12 +21,13 @@ namespace Ecom.API.Controllers
 
 
         [HttpGet]
-        [ProducesResponseType(typeof(Pagination<ProductDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Pagination<ProductDto>), statusCode: StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll([FromQuery] ProductParams productParams)
         {
             var productDto = await work.ProductRepository.GetAllAsync(productParams);
 
-            return Ok(new Pagination<ProductDto>(productParams.PageNumber, productParams.PageSize, productParams.TotalCount, productDto));
+            return Ok(new Pagination<ProductDto>(pageNumber: productParams.PageNumber,
+                pageSize: productParams.PageSize, totalCount: productParams.TotalCount, productDto));
             
         }
 

@@ -44,14 +44,24 @@ namespace Ecom.API.Controllers
                 return BadRequest(new ResponseAPI(400, result.Message));
             }
 
-            Response.Cookies.Append("token", result.Token, new CookieOptions
+            Response.Cookies.Append("token", result.Tokens!.AccessToken, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
                 IsEssential = true,
                 Domain = configuration["CookieSettings:Domain"],
-                Expires = DateTime.Now.AddMinutes(60)
+                Expires = DateTime.UtcNow.AddMinutes(15)
+            });
+
+            Response.Cookies.Append("refreshToken", result.Tokens.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                IsEssential = true,
+                Domain = configuration["CookieSettings:Domain"],
+                Expires = DateTime.UtcNow.AddDays(7)
             });
 
             return Ok(new ResponseAPI(200));
@@ -87,11 +97,55 @@ namespace Ecom.API.Controllers
 
 
 
+        [HttpPost("Refresh-Token")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+
+            if (string.IsNullOrEmpty(refreshToken))
+                return Unauthorized(new ResponseAPI(401, "Refresh token is missing."));
+
+            var result = await work.Auth.RefreshTokenAsync(refreshToken);
+
+            if (!result.Success)
+                return Unauthorized(new ResponseAPI(401, result.Message));
+
+            Response.Cookies.Append("token", result.Tokens!.AccessToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                IsEssential = true,
+                Domain = configuration["CookieSettings:Domain"],
+                Expires = DateTime.UtcNow.AddMinutes(15)
+            });
+
+            Response.Cookies.Append("refreshToken", result.Tokens.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                IsEssential = true,
+                Domain = configuration["CookieSettings:Domain"],
+                Expires = DateTime.UtcNow.AddDays(7)
+            });
+
+            return Ok(new ResponseAPI(200));
+        }
 
         [HttpPost("Logout")]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
+            var refreshToken = Request.Cookies["refreshToken"];
+
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                await work.Auth.RevokeRefreshTokenAsync(refreshToken);
+            }
+
             Response.Cookies.Delete("token");
+            Response.Cookies.Delete("refreshToken");
+
             return Ok(new ResponseAPI(200));
         }
 

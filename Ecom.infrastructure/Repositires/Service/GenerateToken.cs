@@ -1,4 +1,6 @@
-﻿using Ecom.Core.Entities;
+﻿using Azure.Core;
+using Ecom.Core.Dto;
+using Ecom.Core.Entities;
 using Ecom.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -8,6 +10,7 @@ using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -22,7 +25,7 @@ namespace Ecom.infrastructure.Repositires.Service
             this.configuration = configuration;
         }
 
-        public string GetAndCreateToken(AppUser user, IList<string> roles)
+        public TokenResult GetAndCreateToken(AppUser user, IList<string> roles)
         {
             var claims = new List<Claim>
             {
@@ -44,16 +47,22 @@ namespace Ecom.infrastructure.Repositires.Service
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
 
-            var token = new JwtSecurityToken(
+            var accessToken = new JwtSecurityToken(
                  issuer: configuration["Token:Issuer"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(60),
+                expires: DateTime.UtcNow.AddMinutes(15),
                 signingCredentials: credentials
                 );
 
-            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+            var accessTokenString =
+        new JwtSecurityTokenHandler().WriteToken(accessToken);
 
-            return tokenString;
+            var refreshToken = Convert.ToBase64String(
+                RandomNumberGenerator.GetBytes(64));
+
+            return new TokenResult(
+                accessTokenString,
+                refreshToken);
 
         }
 

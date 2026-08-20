@@ -105,8 +105,6 @@ namespace Ecom.infrastructure.Repositires
 
             if (product == null) return false;
 
-
-
            
             if (!string.IsNullOrWhiteSpace(updateProductDto.Name))
             {
@@ -135,8 +133,6 @@ namespace Ecom.infrastructure.Repositires
             }
 
 
-
-
             if (updateProductDto.Photos is not null && updateProductDto.Photos.Any()) 
             {
 
@@ -145,7 +141,6 @@ namespace Ecom.infrastructure.Repositires
                     imageManagementService.DeleteImage(oldPhoto.ImageName);
                 }
                 context.Photos.RemoveRange(product.Photos);
-
 
                 var ImagePathes = await imageManagementService.AddImageAsync(updateProductDto.Photos, updateProductDto.Name);
                 

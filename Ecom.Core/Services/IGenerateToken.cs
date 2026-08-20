@@ -1,4 +1,5 @@
-﻿using Ecom.Core.Entities;
+﻿using Ecom.Core.Dto;
+using Ecom.Core.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +11,7 @@ namespace Ecom.Core.Services
     public interface IGenerateToken
     {
 
-        public string GetAndCreateToken(AppUser user , IList<string> roles);
+        public TokenResult GetAndCreateToken(AppUser user , IList<string> roles);
 
     }
 }

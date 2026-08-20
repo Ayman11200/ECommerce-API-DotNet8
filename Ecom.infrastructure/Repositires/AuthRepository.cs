@@ -72,7 +72,7 @@ namespace Ecom.infrastructure.Repositires
             string token = await userManager.GenerateEmailConfirmationTokenAsync(user);
             await SendEmail(user.Email, token, "Active", "ActiveEmail", "Please active your email, click on button to active");
 
-            return AuthResult.Ok("done");
+            return AuthResult.Ok(null,"done");
         }
 
         public async Task SendEmail(string email, string code, string component, string subject, string message)
@@ -112,7 +112,20 @@ namespace Ecom.infrastructure.Repositires
             if (result.Succeeded)
             {
                 var roles = await userManager.GetRolesAsync(foundUser);
-                return AuthResult.Ok(null, generateToken.GetAndCreateToken(foundUser,roles));
+
+                var tokens = generateToken.GetAndCreateToken(foundUser, roles);
+
+                var refreshToken = new RefreshToken
+                {
+                    Token = tokens.RefreshToken,
+                    ExpiresAt = DateTime.UtcNow.AddDays(7),
+                    AppUserId = foundUser.Id
+                };
+
+                await context.RefreshTokens.AddAsync(refreshToken);
+                await context.SaveChangesAsync();
+
+                return AuthResult.Ok(tokens);
 
             }
 
@@ -144,7 +157,7 @@ namespace Ecom.infrastructure.Repositires
 
             if (result.Succeeded)
             {
-                return AuthResult.Ok("done");
+                return AuthResult.Ok(null,"done");
             }
             return AuthResult.Fail(result.Errors.ToList()[0].Description);
         }
@@ -159,6 +172,7 @@ namespace Ecom.infrastructure.Repositires
             }
 
             var result = await userManager.ConfirmEmailAsync(foundUser, accountDto.Token);
+
             if (result.Succeeded)
             {
                 return true;
@@ -188,7 +202,7 @@ namespace Ecom.infrastructure.Repositires
                 await context.Addresses.AddAsync(address);
             }
             else
-            {              
+            {
                 address.Id = Myaddress.Id;
                 address.AppUserId = Myaddress.AppUserId;
                 context.Addresses.Update(address);
@@ -205,6 +219,63 @@ namespace Ecom.infrastructure.Repositires
 
             return await context.Addresses.FirstOrDefaultAsync(m => m.AppUserId == User.Id);
         }
+
+
+        public async Task<AuthResult> RefreshTokenAsync(string refreshToken)
+        {
+            var storedToken = await context.RefreshTokens
+                .Include(rt => rt.AppUser)
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+            if (storedToken is null)
+                return AuthResult.Fail("Invalid refresh token.");
+
+            if (storedToken.IsRevoked)
+                return AuthResult.Fail("Refresh token has been revoked.");
+
+            if (storedToken.ExpiresAt <= DateTime.UtcNow)
+                return AuthResult.Fail("Refresh token has expired.");
+
+
+
+            var roles = await userManager.GetRolesAsync(storedToken.AppUser);
+
+            var tokens = generateToken.GetAndCreateToken(
+                storedToken.AppUser,
+                roles);
+
+            
+            storedToken.IsRevoked = true;
+
+            var newRefreshToken = new RefreshToken
+            {
+                Token = tokens.RefreshToken,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+                AppUserId = storedToken.AppUserId
+            };
+
+            await context.RefreshTokens.AddAsync(newRefreshToken);
+
+            await context.SaveChangesAsync();
+
+            return AuthResult.Ok(tokens);
+        }
+
+        public async Task<bool> RevokeRefreshTokenAsync(string refreshToken)
+        {
+            var storedToken = await context.RefreshTokens
+                .FirstOrDefaultAsync(x => x.Token == refreshToken);
+
+            if (storedToken is null)
+                return false;
+
+            storedToken.IsRevoked = true;
+
+            await context.SaveChangesAsync();
+
+            return true;
+        }
+
 
     }
 }
