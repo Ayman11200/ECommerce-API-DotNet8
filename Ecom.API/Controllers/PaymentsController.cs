@@ -40,6 +40,7 @@ namespace Ecom.API.Controllers
             {
                 var stripeEvent = EventUtility.ConstructEvent(json,
                     Request.Headers["Stripe-Signature"], endpointSecret, throwOnApiVersionMismatch: false);
+
                 PaymentIntent intent;
                 Order orders;
            
@@ -48,11 +49,13 @@ namespace Ecom.API.Controllers
                     intent = stripeEvent.Data.Object as PaymentIntent;
                     orders = await paymentService.UpdateOrderFaild(intent.Id);
                 }
+
                 else if (stripeEvent.Type == EventTypes.PaymentIntentSucceeded)
                 {
                     intent = stripeEvent.Data.Object as PaymentIntent;
                     orders = await paymentService.UpdateOrderSuccess(intent.Id);
                 }
+
                 else
                 {
                     Console.WriteLine("Unhandled event type: {0}", stripeEvent.Type);

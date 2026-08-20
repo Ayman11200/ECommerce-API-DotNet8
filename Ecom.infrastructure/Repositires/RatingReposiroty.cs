@@ -28,7 +28,9 @@ namespace Ecom.infrastructure.Repositires
         {
             var user = await userManager.FindByIdAsync(UserId);
 
-            if (await context.Ratings.AsNoTracking().AnyAsync(m => m.ProductId == addRatingDto.ProductId && m.AppUser.Id == UserId))
+            if (await context.Ratings
+                .AsNoTracking()
+                .AnyAsync(m => m.ProductId == addRatingDto.ProductId && m.AppUser.Id == UserId))
             {
                 return false;
             }      

@@ -8,14 +8,13 @@ namespace Ecom.API.Middleware
     public class ExceptionMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly IHostEnvironment _environment;
         private readonly IMemoryCache _memoryCache;
         private readonly TimeSpan _rateLimitWindow = TimeSpan.FromSeconds(30);
         private readonly ILogger<ExceptionMiddleware> _logger;
         public ExceptionMiddleware(RequestDelegate next, IHostEnvironment environment, IMemoryCache memoryCache, ILogger<ExceptionMiddleware> logger)
         {
             _next = next;
-            _environment = environment;
+           
             _memoryCache = memoryCache;
             _logger = logger;
         }
@@ -61,7 +60,9 @@ namespace Ecom.API.Middleware
         private bool IsRequestAllowed(HttpContext context)
         {
             var ip = context.Connection.RemoteIpAddress.ToString();
+
             var cachKey = $"Rate:{ip}";
+
             var dateNow = DateTime.Now;
 
             var (timesTamp, count) = _memoryCache.GetOrCreate(cachKey, entry =>
@@ -72,7 +73,7 @@ namespace Ecom.API.Middleware
 
             if (dateNow - timesTamp < _rateLimitWindow)
             {
-                if (count >= 80)
+                if (count >= 10)
                 {
                     return false;
                 }
