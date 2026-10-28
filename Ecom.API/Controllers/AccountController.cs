@@ -65,7 +65,6 @@ namespace Ecom.API.Controllers
             });
 
             return Ok(new ResponseAPI(200));
-
         }
 
 
@@ -163,8 +162,6 @@ namespace Ecom.API.Controllers
         }
 
 
-
-
         [Authorize]
         [HttpPut("update-address")]
         public async Task<IActionResult> updateAddress(ShippingAddressDto addressDTO)
@@ -175,6 +172,7 @@ namespace Ecom.API.Controllers
             return result ? Ok() : BadRequest();
         }
 
+        [Authorize]
         [HttpGet("get-address-for-user")]
         public async Task<IActionResult> getAddress()
         {

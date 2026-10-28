@@ -25,7 +25,7 @@ namespace Ecom.infrastructure
 {
     public static class infrastructureRegisteration
     {
-        public static object infrastructureConfiguration(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection infrastructureConfiguration(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 

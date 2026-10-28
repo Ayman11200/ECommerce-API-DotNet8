@@ -2,12 +2,14 @@
 
 public record ProductDto
 {
+    public int Id { get; init; }
     public string Name { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public decimal NewPrice { get; init; }
     public decimal OldPrice { get; set; }
     public string CategoryName { get; init; }
-    public IReadOnlyList<PhotoDto> Photos { get; init; } = [];
+    public IReadOnlyList<PhotoDto> Photos { get; init; } 
+
 }
 
 public record PhotoDto

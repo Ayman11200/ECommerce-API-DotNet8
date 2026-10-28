@@ -94,7 +94,6 @@ namespace Ecom.infrastructure.Repositires
             if (foundUser is null)
                 return AuthResult.Fail("Invalid email or password");
 
-
             if (!foundUser.EmailConfirmed)
             {
                 var token = await userManager.GenerateEmailConfirmationTokenAsync(foundUser);
@@ -151,7 +150,7 @@ namespace Ecom.infrastructure.Repositires
             var foundUser = await userManager.FindByEmailAsync(passwordDto.Email);
 
             if (foundUser is null)
-                return AuthResult.Fail("Invalid request");
+                return AuthResult.Fail("No account found with this email address.");
 
             var result = await userManager.ResetPasswordAsync(foundUser, passwordDto.Token, passwordDto.Password);
 

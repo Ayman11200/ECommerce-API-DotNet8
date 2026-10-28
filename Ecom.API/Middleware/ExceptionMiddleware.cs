@@ -1,7 +1,7 @@
-﻿using Ecom.API.Helper;
+﻿
+using Ecom.API.Helper;
 using Microsoft.Extensions.Caching.Memory;
 using System.Net;
-using System.Text.Json;
 
 namespace Ecom.API.Middleware
 {
@@ -10,11 +10,16 @@ namespace Ecom.API.Middleware
         private readonly RequestDelegate _next;
         private readonly IMemoryCache _memoryCache;
         private readonly TimeSpan _rateLimitWindow = TimeSpan.FromSeconds(30);
+        private const int RequestLimit = 80;
         private readonly ILogger<ExceptionMiddleware> _logger;
-        public ExceptionMiddleware(RequestDelegate next, IHostEnvironment environment, IMemoryCache memoryCache, ILogger<ExceptionMiddleware> logger)
+
+        public ExceptionMiddleware(
+            RequestDelegate next,
+            IHostEnvironment environment,
+            IMemoryCache memoryCache,
+            ILogger<ExceptionMiddleware> logger)
         {
             _next = next;
-           
             _memoryCache = memoryCache;
             _logger = logger;
         }
@@ -23,16 +28,17 @@ namespace Ecom.API.Middleware
         {
             try
             {
-        
                 if (!IsRequestAllowed(context))
                 {
                     context.Response.ContentType = "application/json";
-                    context.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
+                    context.Response.StatusCode =
+                        (int)HttpStatusCode.TooManyRequests;
 
-                    var Response =
-                        new ApiExceptions((int)HttpStatusCode.TooManyRequests, "Too many request. please try again later");
+                    var response = new ApiExceptions(
+                        (int)HttpStatusCode.TooManyRequests,
+                        "Too many requests. Please try again later.");
 
-                    await context.Response.WriteAsJsonAsync(Response);
+                    await context.Response.WriteAsJsonAsync(response);
                     return;
                 }
 
@@ -40,52 +46,66 @@ namespace Ecom.API.Middleware
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, ex.Message);
+                _logger.LogError(ex, "An unhandled exception occurred.");
 
+                if (context.Response.HasStarted)
+                {
+                    throw;
+                }
+
+                context.Response.Clear();
                 context.Response.ContentType = "application/json";
-
                 context.Response.StatusCode =
                     (int)HttpStatusCode.InternalServerError;
 
                 var response = new ApiExceptions(
                     context.Response.StatusCode,
                     ex.Message,
-                    ex.ToString()
-                    );
-              
+                    ex.ToString());
+
                 await context.Response.WriteAsJsonAsync(response);
             }
         }
 
         private bool IsRequestAllowed(HttpContext context)
         {
-            var ip = context.Connection.RemoteIpAddress.ToString();
+            var ip = context.Connection.RemoteIpAddress?.ToString()
+                     ?? "unknown";
 
-            var cachKey = $"Rate:{ip}";
+            var cacheKey = $"Rate:{ip}";
+            var now = DateTime.UtcNow;
 
-            var dateNow = DateTime.Now;
-
-            var (timesTamp, count) = _memoryCache.GetOrCreate(cachKey, entry =>
-            {
-                entry.AbsoluteExpirationRelativeToNow = _rateLimitWindow;
-                return (timesTamp: dateNow, count: 0);
-            });
-
-            if (dateNow - timesTamp < _rateLimitWindow)
-            {
-                if (count >= 10)
+            var (windowStart, count) = _memoryCache.GetOrCreate(
+                cacheKey,
+                entry =>
                 {
-                    return false;
-                }
-                _memoryCache.Set(cachKey, (timesTamp, count += 1), _rateLimitWindow);
-            }
-            else
+                    entry.AbsoluteExpirationRelativeToNow =
+                        _rateLimitWindow;
+
+                    return (WindowStart: now, Count: 0);
+                });
+
+            if (now - windowStart >= _rateLimitWindow)
             {
-                _memoryCache.Set(cachKey, (dateNow, count), _rateLimitWindow);
+                _memoryCache.Set(
+                    cacheKey,
+                    (WindowStart: now, Count: 1),
+                    _rateLimitWindow);
+
+                return true;
             }
+
+            if (count >= RequestLimit)
+            {
+                return false;
+            }
+
+            _memoryCache.Set(
+                cacheKey,
+                (WindowStart: windowStart, Count: count + 1),
+                _rateLimitWindow);
+
             return true;
         }
-       
-
     }
 }

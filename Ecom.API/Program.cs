@@ -1,3 +1,4 @@
+
 using AutoMapper;
 using Ecom.API.Authorization;
 using Ecom.API.Extensions;
@@ -16,31 +17,26 @@ namespace Ecom.API
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-            
-      
+
             builder.Services.AddMemoryCache();
             builder.Services.AddControllers();
-
 
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", policy =>
-                    policy.WithOrigins("https://your-frontend-domain.com")
+                    policy.WithOrigins("http://localhost:4200")
                           .AllowAnyMethod()
                           .AllowAnyHeader()
-                          .AllowCredentials()); 
+                          .AllowCredentials());
             });
-           
+
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.infrastructureConfiguration(builder.Configuration);
             builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-
-           
             builder.Services.AddSingleton<IAuthorizationHandler, BasketOwnerOrAdminHandler>();
             builder.Services.AddSingleton<IAuthorizationHandler, OrderOwnerOrAdminHandler>();
-
 
             builder.Services.AddAuthorization(options =>
             {
@@ -51,34 +47,34 @@ namespace Ecom.API
                     policy.Requirements.Add(new OrderOwnerOrAdminRequirement()));
             });
 
-
             var app = builder.Build();
-
 
             await app.SeedRolesAsync();
             await app.SeedAdminUserAsync();
 
-            app.UseCustomExceptionMiddleware();
+            app.UseHttpsRedirection();
+
+            app.UseRouting();
 
             app.UseCors("AllowFrontend");
+
+            app.UseCustomExceptionMiddleware();
 
             app.UseAuthentication();
             app.UseAuthorization();
 
-            
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+
             app.UseStatusCodePagesWithReExecute("/errors/{0}");
 
-            app.UseHttpsRedirection();
-
-            app.UseStaticFiles();          
+            app.UseStaticFiles();
 
             app.MapControllers();
-           
+
             app.Run();
         }
     }

@@ -97,6 +97,18 @@ namespace Ecom.infrastructure.Repositires.Service
 
             return OrderResult.Ok(orderToReturn);
 
+
+
+
+            context.Categories
+                .Where(c => c.Products
+                .Any(p => p.NewPrice > 2000))
+                .Select(c => new
+                {
+                    c.Name,
+                    ProductCount = c.Products.Count()
+                });
+
         }
 
 

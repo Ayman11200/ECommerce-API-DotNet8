@@ -26,8 +26,8 @@ namespace Ecom.API.Controllers
         {
             var productDto = await work.ProductRepository.GetAllAsync(productParams);
 
-            return Ok(new Pagination<ProductDto>(pageNumber: productParams.PageNumber,
-                pageSize: productParams.PageSize, totalCount: productParams.TotalCount, productDto));
+            return Ok(new Pagination<ProductDto>( productParams.PageNumber,
+                 productParams.PageSize, productParams.TotalCount, productDto));
             
         }
 

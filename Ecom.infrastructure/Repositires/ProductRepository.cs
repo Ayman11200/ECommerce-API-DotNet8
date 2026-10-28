@@ -44,9 +44,8 @@ namespace Ecom.infrastructure.Repositires
                 m.Name.ToLower().Contains(word.ToLower()) ||
                 m.Description.ToLower().Contains(word.ToLower())
 
-                    )); 
+                )); 
             }
-
 
 
             if (productParams.CategoryId.HasValue)
@@ -58,8 +57,8 @@ namespace Ecom.infrastructure.Repositires
 
                 query = productParams.Sort switch
                 {
-                    "PriceAce" => query.OrderBy(m => m.NewPrice),
-                    "PriceDce" => query.OrderByDescending(m => m.NewPrice),
+                    "PriceAsc" => query.OrderBy(m => m.NewPrice),
+                    "PriceDes" => query.OrderByDescending(m => m.NewPrice),
                     _ => query.OrderBy(m => m.Name),
                 };
             }
@@ -110,7 +109,6 @@ namespace Ecom.infrastructure.Repositires
             {
                 product.Name = updateProductDto.Name;
             }
-
      
             if (!string.IsNullOrWhiteSpace(updateProductDto.Description))
             {

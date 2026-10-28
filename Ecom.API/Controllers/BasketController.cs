@@ -2,10 +2,12 @@
 using Ecom.API.Extensions;
 using Ecom.API.Helper;
 using Ecom.Core.Dto;
+using Ecom.Core.DTO;
 using Ecom.Core.Entities;
 using Ecom.Core.interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Reflection.Metadata.Ecma335;
 
@@ -29,21 +31,24 @@ namespace Ecom.API.Controllers
             var basket = await work.CustomerBasketRepository.GetBasketAsync(Id);
 
             if (basket == null)
-                return Ok(new CustomerBasket(Id));
+                return Ok(new BasketDto { Id = Id ,BasketItems = new List<BasketItem>() });
 
             var authResult = await authorizationService.AuthorizeAsync(User, basket, "BasketOwnerOrAdmin");
             if (!authResult.Succeeded)
                 return Forbid();
 
-            return Ok(basket);
+            var resultDto = mapper.Map<BasketDto>(source: basket);
+
+
+            return Ok(resultDto);
                 
         }
 
         [HttpPut]
         [ProducesResponseType(typeof(CustomerBasket), StatusCodes.Status200OK)]
-        public async Task<IActionResult> Update(CustomerBasket basket)
+        public async Task<IActionResult> Update(BasketDto dto)
         {
-            var existing = await work.CustomerBasketRepository.GetBasketAsync(basket.Id);
+            var existing = await work.CustomerBasketRepository.GetBasketAsync(dto.Id);
 
             if (existing is not null)
             {
@@ -52,12 +57,16 @@ namespace Ecom.API.Controllers
                     return Forbid();
             }
 
+            var basket = mapper.Map<CustomerBasket>(dto);
             basket.OwnerId = existing?.OwnerId ?? User.GetUserId();
-
+            basket.PaymentIntentId = existing?.PaymentIntentId;
+            basket.ClientSecret = existing?.ClientSecret;
 
             var result = await work.CustomerBasketRepository.UpdateBasketAsync(basket);
+            if (result is null)
+                return BadRequest(new ResponseAPI(400, "Invalid basket or products."));
 
-            return result is null? BadRequest(new ResponseAPI(400, "Invalid basket or products.")) : Ok(result);
+            return Ok(mapper.Map<BasketDto>(result));
         }
 
 

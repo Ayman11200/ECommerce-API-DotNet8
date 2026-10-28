@@ -13,12 +13,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Ecom.API.Controllers
 {
-  
+
     public class CategoryController : BaseController
     {
-        public CategoryController(IUnitOfWork work , IMapper mapper ) : base (work , mapper)
+        public CategoryController(IUnitOfWork work, IMapper mapper) : base(work, mapper)
         {
-           
+
         }
 
         [HttpGet("get-all")]
@@ -47,7 +47,7 @@ namespace Ecom.API.Controllers
             var CategoryDto = mapper.Map<CategoryDto>(Category);
 
             return Ok(CategoryDto);
-     
+
         }
 
         [HttpPost("Add-Category")]
@@ -65,9 +65,10 @@ namespace Ecom.API.Controllers
             var createdDto = mapper.Map<CategoryDto>(category);
 
             return CreatedAtAction(
-                   nameof(GetByIdAsync),
-                   new { id = category.Id },
-                     createdDto);
+       nameof(GetByIdAsync),
+       new { Id = category.Id },
+         createdDto);
+
         }
 
         [HttpPut("Update-Category")]
@@ -77,7 +78,7 @@ namespace Ecom.API.Controllers
         [ProducesResponseType(typeof(ResponseAPI), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Update(int Id, CategoryDto CategoryDto)
         {
-            if(Id != CategoryDto.Id)
+            if (Id != CategoryDto.Id)
                 return BadRequest(new ResponseAPI(400, "Route id does not match body id."));
 
             var category = await work.CategoryRepository.GetByIdAsync(Id);
@@ -85,7 +86,7 @@ namespace Ecom.API.Controllers
             if (category is null)
                 return NotFound(new ResponseAPI(404, $"Category with Id = {Id} not found."));
 
-            mapper.Map(CategoryDto , category);
+            mapper.Map(CategoryDto, category);
 
             work.CategoryRepository.Update(category);
             await work.SaveChangesAsync();
@@ -101,7 +102,7 @@ namespace Ecom.API.Controllers
         public async Task<IActionResult> Delete(int Id)
         {
 
-             var Deleted = await work.CategoryRepository.DeleteAsync(Id); ;
+            var Deleted = await work.CategoryRepository.DeleteAsync(Id); ;
 
             if (!Deleted) return NotFound(new ResponseAPI(404, $"Category with Id = {Id} not found."));
 

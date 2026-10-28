@@ -9,7 +9,7 @@ namespace Ecom.Core.Sharing
 {
     public class ProductParams
     {
-        private const int _DefaultPageSize = 3;
+        private const int _DefaultPageSize = 4;
 
         private const int _MaxAllowedPageSize = 6;
 
