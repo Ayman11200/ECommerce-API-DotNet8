@@ -66,6 +66,7 @@ namespace Ecom.infrastructure.Repositires.Service
                 {
                     ProductItemId = product.Id,
                     ProductName = product.Name,
+                    Description = product.Description,
                     Price = item.Price,
                     MainImage = item.Image,
                     Quantity = item.Quantity

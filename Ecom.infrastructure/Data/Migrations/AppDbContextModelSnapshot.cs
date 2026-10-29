@@ -240,6 +240,10 @@ namespace Ecom.infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("MainImage")
                         .IsRequired()
                         .HasMaxLength(300)

@@ -10,13 +10,15 @@ namespace Ecom.Core.Entities.Order
 
         }
 
-        public OrderItem(int productItemId, string productName, string mainImage, int quantity, decimal price)
+        public OrderItem(int productItemId, string productName, string mainImage, int quantity, decimal price, string description)
         {
             ProductItemId = productItemId;
             ProductName = productName;
+            Description = description;
             MainImage = mainImage;
             Quantity = quantity;
             Price = price;
+
         }
 
         [Required]
@@ -25,6 +27,9 @@ namespace Ecom.Core.Entities.Order
         [Required]
         [MaxLength(200)]
         public string ProductName { get; set; }
+
+        public string Description { get; set; }
+
 
         [Required]
         [MaxLength(300)]
