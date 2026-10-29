@@ -78,20 +78,24 @@ namespace Ecom.infrastructure.Repositires.Service
 
             var shippingAddress = mapper.Map<ShippingAddress>(orderDto.ShippingAddressDto);
 
-            var exsistOrder = await context.Orders
-                .Where(o => o.PaymentIntentId == basket.PaymentIntentId)
-                .FirstOrDefaultAsync();
+            //var exsistOrder = await context.Orders
+            //    .Where(o => o.PaymentIntentId == basket.PaymentIntentId)
+            //    .FirstOrDefaultAsync();
 
-            if (exsistOrder is not null)
-            {
-                context.Orders.Remove(exsistOrder);    
-            }
+            //if (exsistOrder is not null)
+            //{
+            //    context.Orders.Remove(exsistOrder);    
+            //}
 
-            var order = new Order(email, subTotal, deliveryMethod, orderItems, shippingAddress, basket.PaymentIntentId);
+            var temporaryOrderId = $"TEMP-{Guid.NewGuid()}";
+
+            var order = new Order(email, subTotal, deliveryMethod, orderItems, shippingAddress, temporaryOrderId);
             await context.Orders.AddAsync(order);
 
             await context.SaveChangesAsync();
-            await work.CustomerBasketRepository.DeleteBasketAsync(orderDto.BasketId);
+        //await work.CustomerBasketRepository.DeleteBasketAsync(orderDto.BasketId);
+        //السبب: لو السلة اتمسحت قبل الدفع، ولما الكارت يفشل مش هتقدر تحاول تاني(ومعاها الـ clientSecret).الأفضل نمسحها من الفرونت بعد نجاح الدفع.
+
 
             var orderToReturn = mapper.Map<OrderToReturnDTO>(order);
 

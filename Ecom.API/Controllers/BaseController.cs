@@ -15,7 +15,7 @@ namespace Ecom.API.Controllers
         public BaseController(IUnitOfWork work, IMapper mapper)
         {
             this.work = work;
-            this.mapper = mapper;
+                this.mapper = mapper;
   
         }
 }
