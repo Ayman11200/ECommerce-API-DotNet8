@@ -1,0 +1,30 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "plan": {
+      "model": "opencode/deepseek-v4.1-flash-free"
+    },
+    "build": {
+      "model": "sovereigneg/qwen3-coder-next"
+    }
+  },
+  "provider": {
+    "sovereigneg": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "SovereignEG",
+      "options": {
+        "baseURL": "https://backend.sovereigneg.com/v1",
+        "apiKey": "{env:SOVEREIGNEG_API_KEY}"
+      },
+      "models": {
+        "qwen3-coder-next": {
+          "name": "Qwen3 Coder Next",
+          "limit": {
+            "context": 262144,
+            "output": 235929
+          }
+        }
+      }
+    }
+  }
+}
